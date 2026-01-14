@@ -1,9 +1,9 @@
 name: Daily Football Goal Poster
 
 on:
-  workflow_dispatch:
   schedule:
     - cron: '*/30 * * * *'
+  workflow_dispatch:
 
 jobs:
   football-automation:
@@ -24,9 +24,15 @@ jobs:
           pip install -r requirements.txt
 
       - name: Create Cookies File
-        if: ${{ secrets.YTDLP_COOKIES != '' }}
+        env:
+          COOKIES_DATA: ${{ secrets.YTDLP_COOKIES }}
         run: |
-          echo "${{ secrets.YTDLP_COOKIES }}" > cookies.txt
+          if [ -n "$COOKIES_DATA" ]; then
+            echo "$COOKIES_DATA" > cookies.txt
+            echo "✅ Cookies file created successfully."
+          else
+            echo "⚠️ No cookies secret found. Proceeding without login."
+          fi
 
       - name: Run Automation Script
         env:
