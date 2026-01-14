@@ -3,67 +3,60 @@ import sys
 import logging
 import asyncio
 import requests
-import time
+import feedparser
 import yt_dlp
-from datetime import datetime
+import time
 
 # Logging Setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 
 # Configuration
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 FB_PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 
-def get_latest_goal_video():
+def get_latest_reddit_goal():
     """
-    Fetches the latest football video URL from RapidAPI.
+    Reads r/soccer RSS feed and finds the latest goal.
     """
-    if not RAPIDAPI_KEY:
-        logger.error("❌ Missing RAPIDAPI_KEY in GitHub Secrets.")
+    rss_url = "https://www.reddit.com/r/soccer/new/.rss"
+    logger.info("📡 Fetching latest posts from r/soccer...")
+    
+    # Custom User Agent is required for Reddit
+    feedparser.USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    feed = feedparser.parse(rss_url)
+    
+    if not feed.entries:
+        logger.error("❌ Failed to fetch RSS feed.")
         return None, None
 
-    url = "https://free-football-soccer-videos.p.rapidapi.com/"
-    headers = {
-        "X-RapidAPI-Key": RAPIDAPI_KEY,
-        "X-RapidAPI-Host": "free-football-soccer-videos.p.rapidapi.com"
-    }
-
-    try:
-        logger.info("📡 Fetching latest videos from API...")
-        response = requests.get(url, headers=headers)
-        data = response.json()
+    # Loop through posts to find a goal
+    for entry in feed.entries:
+        title = entry.title
+        link = entry.link
         
-        # Get the very first video (latest)
-        if data and len(data) > 0:
-            video_data = data[0]
-            title = video_data.get('title', 'Football Goal')
+        # Filter: Must be a Goal, ignore "Goal Kick" or text posts
+        if "Goal" in title and "Discussion" not in title:
+            logger.info(f"✅ Found Goal: {title}")
+            logger.info(f"🔗 Link: {link}")
+            return link, title
             
-            # The API returns a 'url' (usually ScoreBat) or embedded 'videos' list
-            # We prefer the direct URL to pass to yt-dlp
-            video_url = video_data.get('url')
-            
-            logger.info(f"✅ Found Video: {title}")
-            logger.info(f"🔗 Link: {video_url}")
-            return video_url, title
-            
-    except Exception as e:
-        logger.error(f"❌ API Error: {e}")
-    
+    logger.warning("⚠️ No recent goals found in the feed.")
     return None, None
 
 def download_video(url):
     filename = "temp_video.mp4"
     if os.path.exists(filename): os.remove(filename)
     
-    logger.info(f"⬇️ Downloading: {url}")
+    logger.info(f"⬇️ Attempting download via yt-dlp...")
 
     ydl_opts = {
         'outtmpl': filename,
-        'format': 'best', # Get best quality
+        'format': 'best[ext=mp4]/best',
         'quiet': True,
         'no_warnings': True,
+        # Reddit specific settings
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
     }
 
     try:
@@ -75,7 +68,7 @@ def download_video(url):
             logger.info(f"✅ Downloaded successfully! Size: {file_size:.2f} MB")
             return filename
         else:
-            logger.warning("❌ Download finished but file not found.")
+            logger.warning("❌ Download finished but file not found (might be an unsupported host).")
             return None
     except Exception as e:
         logger.error(f"❌ yt-dlp Error: {e}")
@@ -83,14 +76,20 @@ def download_video(url):
 
 def post_to_facebook(video_path, title):
     url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/videos"
-    caption = f"⚽ {title} \n\n#football #soccer #goals #highlights"
+    caption = f"⚽ {title} \n\n#football #soccer #goals #highlights #premierleague"
     
+    if not FB_PAGE_ACCESS_TOKEN or not FB_PAGE_ID:
+        logger.error("❌ Missing Facebook Credentials in Secrets!")
+        return
+
     files = {'source': open(video_path, 'rb')}
     payload = {'access_token': FB_PAGE_ACCESS_TOKEN, 'description': caption}
     
     try:
         logger.info("📤 Uploading to Facebook...")
-        r = requests.post(url, data=payload, files=files)
+        # Increase timeout for video uploads
+        r = requests.post(url, data=payload, files=files, timeout=60)
+        
         if r.status_code == 200:
             logger.info(f"✅ Success! Posted to Facebook. ID: {r.json().get('id')}")
         else:
@@ -103,13 +102,13 @@ def post_to_facebook(video_path, title):
             os.remove(video_path)
 
 def main():
-    logger.info("🚀 STARTING API-BASED BOT")
+    logger.info("🚀 STARTING REDDIT-BASED BOT")
     
-    # 1. Get Video URL from API
-    video_url, title = get_latest_goal_video()
+    # 1. Get Reddit Link
+    video_url, title = get_latest_reddit_goal()
     
     if not video_url:
-        logger.error("Could not find a video URL. Exiting.")
+        logger.error("Exiting.")
         return
 
     # 2. Download
@@ -119,7 +118,7 @@ def main():
     if video_path:
         post_to_facebook(video_path, title)
     else:
-        logger.error("Could not download video.")
+        logger.error("Could not download video (unsupported host or deleted).")
 
 if __name__ == "__main__":
     main()
