@@ -2,9 +2,7 @@ import os
 import sys
 import logging
 import requests
-import feedparser
 import yt_dlp
-import re
 
 # Logging Setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,55 +12,50 @@ logger = logging.getLogger()
 FB_PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 
-def get_latest_highlight():
-    """
-    Reads OurMatch RSS feed with a custom User-Agent to avoid blocks.
-    """
-    rss_url = "https://ourmatch.net/videos/feed/"
-    logger.info("📡 Fetching latest highlights from OurMatch...")
-    
-    # Custom Headers to look like a browser
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-    
-    try:
-        response = requests.get(rss_url, headers=headers, timeout=10)
-        
-        # Parse the raw content
-        feed = feedparser.parse(response.content)
-        
-        if not feed.entries:
-            logger.error("❌ RSS feed parsed but found no entries.")
-            return None
+# CHANGE THIS URL to any channel you like (e.g., Sky Sports, TNT Sports, Real Madrid)
+YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@SkySportsFootball/videos"
 
-        # Get the very first entry (latest match)
-        entry = feed.entries[0]
-        title = entry.title
-        link = entry.link
-        
-        logger.info(f"✅ Found Match: {title}")
-        logger.info(f"🔗 Link: {link}")
-        
-        return {"title": title, "link": link}
-        
+def get_latest_video_from_channel():
+    """
+    Uses yt-dlp to find the latest video from a specific channel.
+    """
+    logger.info(f"📡 Fetching latest video from: {YOUTUBE_CHANNEL_URL}")
+    
+    ydl_opts = {
+        'quiet': True,
+        'extract_flat': True, # Only get metadata, don't download yet
+        'playlistend': 1,     # Get only the 1 latest video
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(YOUTUBE_CHANNEL_URL, download=False)
+            
+            if 'entries' in info and len(info['entries']) > 0:
+                video = info['entries'][0]
+                title = video['title']
+                url = video['url']
+                logger.info(f"✅ Found Video: {title}")
+                return {"title": title, "link": url}
+            
+            logger.warning("No videos found on channel.")
+            return None
     except Exception as e:
-        logger.error(f"❌ Error fetching RSS: {e}")
+        logger.error(f"❌ Channel Fetch Error: {e}")
         return None
 
 def download_video(url):
     filename = "temp_video.mp4"
     if os.path.exists(filename): os.remove(filename)
     
-    logger.info(f"⬇️ Attempting download via yt-dlp...")
+    logger.info(f"⬇️ Downloading: {url}")
 
     ydl_opts = {
         'outtmpl': filename,
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        # Get best MP4 video under 100MB to ensure upload success
+        'format': 'best[ext=mp4][filesize<100M]/best[ext=mp4]',
         'quiet': True,
         'no_warnings': True,
-        'ignoreerrors': True,
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
     }
 
     try:
@@ -70,34 +63,24 @@ def download_video(url):
             ydl.download([url])
             
         if os.path.exists(filename):
-            file_size = os.path.getsize(filename) / (1024 * 1024)
-            if file_size < 1: 
-                logger.warning(f"❌ File too small ({file_size:.2f} MB).")
-                return None
-                
-            logger.info(f"✅ Downloaded! Size: {file_size:.2f} MB")
+            size = os.path.getsize(filename) / (1024 * 1024)
+            logger.info(f"✅ Downloaded! Size: {size:.2f} MB")
             return filename
-        else:
-            logger.warning("❌ Download finished but file not found.")
-            return None
+        return None
     except Exception as e:
-        logger.error(f"❌ yt-dlp Error: {e}")
+        logger.error(f"❌ Download Error: {e}")
         return None
 
 def post_to_facebook(video_path, title):
     url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/videos"
-    caption = f"🔥 Match Highlights: {title} ⚽️ \n\n#football #soccer #highlights #goals"
+    caption = f"⚽ {title} \n\n#football #soccer #highlights #goals"
     
-    if not FB_PAGE_ACCESS_TOKEN or not FB_PAGE_ID:
-        logger.error("❌ Missing Facebook Credentials!")
-        return
-
     files = {'source': open(video_path, 'rb')}
     payload = {'access_token': FB_PAGE_ACCESS_TOKEN, 'description': caption}
     
     try:
         logger.info("📤 Uploading to Facebook...")
-        r = requests.post(url, data=payload, files=files, timeout=180)
+        r = requests.post(url, data=payload, files=files, timeout=300)
         
         if r.status_code == 200:
             logger.info(f"✅ Success! Posted to Facebook. ID: {r.json().get('id')}")
@@ -111,9 +94,9 @@ def post_to_facebook(video_path, title):
             os.remove(video_path)
 
 def main():
-    logger.info("🚀 STARTING OURMATCH BOT")
+    logger.info("🚀 STARTING YOUTUBE CHANNEL BOT")
     
-    match = get_latest_highlight()
+    match = get_latest_video_from_channel()
     
     if not match:
         return
@@ -123,7 +106,7 @@ def main():
     if video_path:
         post_to_facebook(video_path, match['title'])
     else:
-        logger.error("Could not download video from the page.")
+        logger.error("Download failed (possibly Geoblocked or too large).")
 
 if __name__ == "__main__":
     main()
