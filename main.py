@@ -16,21 +16,23 @@ FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 
 def is_goal_post(title):
     """
-    Returns True if the title looks like a real goal video.
-    Filters out quotes, stats, and discussions.
+    Relaxed filter: Returns True if it looks like a video.
     """
-    # Reject text-heavy keywords
-    bad_words = ["Quote", "Interview", "Stats", "Analysis", "Discussion", "Thread", "List", "Question"]
-    if any(w in title for w in bad_words):
+    title_lower = title.lower()
+    
+    # Reject obvious text discussions
+    bad_words = ["discussion", "thread", "daily discussion", "question", "quote", "interview", "stat", "analysis", "official"]
+    if any(w in title_lower for w in bad_words):
         return False
         
-    # Must have "Goal" or "Highlight"
-    if "Goal" not in title and "highlight" not in title.lower():
-        return False
+    # Accept anything with "goal", "highlight", "vs", or a score like "1-0"
+    if "goal" in title_lower or "highlight" in title_lower:
+        return True
+    
+    if " vs " in title_lower:
+        return True
         
-    # Strong indicator: Contains score or 'vs' (e.g., "Team A 1-0 Team B", "Team A [2]-0 Team B")
-    # Regex looks for digit-digit pattern or 'vs'
-    if re.search(r'\d+-\d+', title) or " vs " in title.lower():
+    if re.search(r'\d+-\d+', title):
         return True
         
     return False
@@ -39,6 +41,7 @@ def get_reddit_goal_candidates():
     """
     Reads r/soccer RSS feed and returns a LIST of potential video links.
     """
+    # Increased limit to 100 to find older goals if today is slow
     rss_url = "https://www.reddit.com/r/soccer/new/.rss?limit=100"
     logger.info("📡 Fetching latest posts from r/soccer...")
     
@@ -69,7 +72,6 @@ def download_video(url):
         'format': 'best[ext=mp4]/best',
         'quiet': True,
         'no_warnings': True,
-        # IMPORTANT: Ignore errors so we can try the next video
         'ignoreerrors': True,
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
     }
@@ -80,7 +82,7 @@ def download_video(url):
             
         if os.path.exists(filename):
             file_size = os.path.getsize(filename) / (1024 * 1024)
-            if file_size < 0.1: # Skip empty/broken files
+            if file_size < 0.1: 
                 return None
             logger.info(f"✅ Downloaded! Size: {file_size:.2f} MB")
             return filename
@@ -119,32 +121,27 @@ def post_to_facebook(video_path, title):
             os.remove(video_path)
 
 def main():
-    logger.info("🚀 STARTING BOT (SMART LOOP)")
+    logger.info("🚀 STARTING BOT (RELAXED FILTER)")
     
-    # 1. Get List of Candidates
     candidates = get_reddit_goal_candidates()
     
     if not candidates:
-        logger.warning("No valid goal posts found right now.")
+        logger.warning("No valid posts found.")
         return
 
-    # 2. Loop until we successfully post ONE video
     for link, title in candidates:
         logger.info(f"👉 Processing: {title}")
-        
-        # Try Download
         video_path = download_video(link)
         
         if video_path:
-            # Try Post
             success = post_to_facebook(video_path, title)
             if success:
                 logger.info("🎉 Mission Accomplished. Exiting.")
-                return # Stop after posting 1 video
+                return 
             
         logger.info("🔄 Trying next candidate...")
 
-    logger.error("❌ Could not download or post any of the candidates.")
+    logger.error("❌ Could not download or post any candidates.")
 
 if __name__ == "__main__":
     main()
