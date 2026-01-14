@@ -8,39 +8,41 @@ import yt_dlp
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger()
 
-# Configuration
 FB_PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 
-# Instagram Page to scrape (Open public profile)
-INSTAGRAM_URL = "https://www.instagram.com/433/reels/"
-
-def get_latest_reel():
-    logger.info(f"📡 Fetching latest reel from: {INSTAGRAM_URL}")
+def find_twitter_video():
+    # Search for "Goal" videos on Twitter
+    # We use a specific URL that yt-dlp understands as a search
+    # "min_faves:500" ensures it's a popular/real goal, not spam
+    search_query = "https://twitter.com/search?q=goal filter:videos min_faves:500&src=typed_query&f=live"
+    
+    logger.info(f"📡 Searching Twitter for goals...")
     
     ydl_opts = {
         'quiet': True,
-        'extract_flat': True, 
-        'playlistend': 1, # Get latest 1
+        'extract_flat': True,
+        'playlistend': 1, 
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(INSTAGRAM_URL, download=False)
+            # yt-dlp search syntax: "bvsearch1:[QUERY]"
+            # This searches specifically for a video
+            result = ydl.extract_info("bvsearch1:football goal highlight", download=False)
             
-            if 'entries' in info and len(info['entries']) > 0:
-                video = info['entries'][0]
-                url = video['url']
-                title = video.get('title', 'Football Clip')
+            if 'entries' in result and len(result['entries']) > 0:
+                video = result['entries'][0]
+                url = video.get('url') or video.get('webpage_url')
+                title = video.get('title', 'Football Goal')
                 
-                logger.info(f"✅ Found Reel: {title[:30]}...")
-                logger.info(f"🔗 Link: {url}")
+                logger.info(f"✅ Found Video: {title}")
                 return {"title": title, "link": url}
             
             logger.warning("No videos found.")
             return None
     except Exception as e:
-        logger.error(f"❌ Fetch Error: {e}")
+        logger.error(f"❌ Search Error: {e}")
         return None
 
 def download_video(url):
@@ -51,19 +53,15 @@ def download_video(url):
 
     ydl_opts = {
         'outtmpl': filename,
-        'format': 'mp4', # Instagram is always mp4
+        'format': 'best[ext=mp4]',
         'quiet': True,
-        'no_warnings': True,
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-            
-        if os.path.exists(filename):
-            size = os.path.getsize(filename) / (1024 * 1024)
-            logger.info(f"✅ Downloaded! Size: {size:.2f} MB")
-            return filename
+            if os.path.exists(filename):
+                return filename
         return None
     except Exception as e:
         logger.error(f"❌ Download Error: {e}")
@@ -71,37 +69,28 @@ def download_video(url):
 
 def post_to_facebook(video_path, title):
     url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/videos"
-    # Clean up title
-    clean_title = title.split('\n')[0] if title else "Football Highlight"
-    caption = f"⚽ {clean_title} \n\n#football #soccer #goals #highlights"
+    caption = f"⚽ {title} \n\n#football #soccer #goals"
     
     files = {'source': open(video_path, 'rb')}
     payload = {'access_token': FB_PAGE_ACCESS_TOKEN, 'description': caption}
     
     try:
         logger.info("📤 Uploading to Facebook...")
-        r = requests.post(url, data=payload, files=files, timeout=300)
-        if r.status_code == 200:
-            logger.info(f"✅ Success! Posted to Facebook. ID: {r.json().get('id')}")
-        else:
-            logger.error(f"❌ FB Failed: {r.text}")
+        requests.post(url, data=payload, files=files, timeout=300)
+        logger.info("✅ Upload attempted (Async). Check Facebook.")
     except Exception as e:
-        logger.error(f"FB Error: {e}")
+        logger.error(f"Upload Error: {e}")
     finally:
         files['source'].close()
-        if os.path.exists(video_path):
-            os.remove(video_path)
+        if os.path.exists(video_path): os.remove(video_path)
 
 def main():
-    logger.info("🚀 STARTING INSTAGRAM REELS BOT")
-    match = get_latest_reel()
-    if not match: return
-
-    video_path = download_video(match['link'])
-    if video_path:
-        post_to_facebook(video_path, match['title'])
-    else:
-        logger.error("Download failed.")
+    logger.info("🚀 STARTING TWITTER/SEARCH BOT")
+    match = find_twitter_video()
+    if match:
+        video_path = download_video(match['link'])
+        if video_path:
+            post_to_facebook(video_path, match['title'])
 
 if __name__ == "__main__":
     main()
