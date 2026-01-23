@@ -2,3 +2,4 @@ feedparser
 facebook-sdk
 requests
 google-generativeai
+beautifulsoup4
