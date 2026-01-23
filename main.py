@@ -2,104 +2,138 @@ import feedparser
 import facebook
 import os
 import requests
+import json
+import google.generativeai as genai
+import random
 
 # --- CONFIGURATION ---
-# RSS Feed URL (Sky Sports Football is reliable for images/titles)
-RSS_URL = "https://www.skysports.com/rss/12040"
+RSS_FEEDS = [
+    "https://www.skysports.com/rss/12040",          # Sky Sports Football
+    "https://www.espn.com/espn/rss/soccer/news",    # ESPN Soccer
+    "http://feeds.bbci.co.uk/sport/football/rss.xml", # BBC Football
+    "https://www.90min.com/posts.rss"               # 90min
+]
 
-# File to store the ID of the last posted article
-ID_FILE = "last_id.txt"
+# Words to ignore. If the title has these, we skip it.
+BLACKLIST = [
+    "podcast", "live stream", "how to watch", "betting", "odds", 
+    "sky sports", "subscribe", "fantasy", "quiz", "preview", "prediction"
+]
 
-def get_access_token():
-    # We retrieve keys from GitHub Secrets
-    token = os.environ.get("FB_PAGE_ACCESS_TOKEN")
+HISTORY_FILE = "history.json"
+
+def setup_env():
+    # Load keys
+    fb_token = os.environ.get("FB_PAGE_ACCESS_TOKEN")
     page_id = os.environ.get("FB_PAGE_ID")
-    if not token or not page_id:
-        raise Exception("Error: FB_PAGE_ACCESS_TOKEN or FB_PAGE_ID not found in environment variables.")
-    return token, page_id
+    gemini_key = os.environ.get("GEMINI_API_KEY")
 
-def get_last_posted_id():
-    if not os.path.exists(ID_FILE):
-        return None
-    with open(ID_FILE, "r") as f:
-        return f.read().strip()
+    if not all([fb_token, page_id, gemini_key]):
+        raise Exception("Missing Environment Variables (FB or GEMINI).")
+    
+    # Configure AI
+    genai.configure(api_key=gemini_key)
+    return fb_token, page_id
 
-def save_last_posted_id(new_id):
-    with open(ID_FILE, "w") as f:
-        f.write(new_id)
+def get_ai_rewrite(title, description):
+    """ Sends the news to Google Gemini to rewrite nicely """
+    try:
+        model = genai.GenerativeModel('gemini-pro')
+        
+        prompt = (
+            f"Act as a professional football social media manager. "
+            f"Here is a news headline: '{title}'. "
+            f"Here is the summary: '{description}'. "
+            f"Write a short, engaging Facebook post about this news. "
+            f"Use emojis. Add 3 relevant hashtags. "
+            f"Do NOT mention the source (like Sky or ESPN). "
+            f"Do NOT include 'Read more' links. Just the text."
+        )
+        
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        print(f"AI Error: {e}")
+        # Fallback if AI fails: just use the title
+        return f"⚽ {title}\n\n#Football"
+
+def extract_image(entry):
+    """ extract image from RSS """
+    if 'media_content' in entry:
+        return entry.media_content[0]['url']
+    if 'media_thumbnail' in entry:
+        return entry.media_thumbnail[0]['url']
+    if 'enclosures' in entry:
+        for enc in entry.enclosures:
+            if 'image' in enc.type:
+                return enc.href
+    return None
+
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+def save_history(history):
+    # Keep only last 100
+    with open(HISTORY_FILE, 'w') as f:
+        json.dump(history[-100:], f)
 
 def main():
-    print("--- Starting Football News Bot ---")
+    print("--- Starting AI Football Bot ---")
+    fb_token, page_id = setup_env()
+    graph = facebook.GraphAPI(fb_token)
+    history = load_history()
+
+    # Shuffle feeds so we don't always post from Sky first
+    random.shuffle(RSS_FEEDS)
     
-    # 1. Parse the RSS Feed
-    feed = feedparser.parse(RSS_URL)
-    if not feed.entries:
-        print("No entries found in RSS feed.")
-        return
+    posted = False
 
-    # Get the latest news item
-    latest_item = feed.entries[0]
-    
-    # Unique ID for the article (usually the link or a guid)
-    article_id = latest_item.guid if 'guid' in latest_item else latest_item.link
-    
-    # 2. Check if already posted
-    last_id = get_last_posted_id()
-    if article_id == last_id:
-        print("Latest article already posted. Skipping.")
-        return
-
-    print(f"New article found: {latest_item.title}")
-
-    # 3. Connect to Facebook
-    token, page_id = get_access_token()
-    graph = facebook.GraphAPI(token)
-
-    # 4. Prepare Post Data
-    title = latest_item.title
-    link = latest_item.link
-    message = f"⚽ {title}\n\nRead more here: {link}\n\n#FootballNews #SkySports"
-
-    # 5. Extract Image URL (RSS feeds vary, this covers most standard ones)
-    image_url = None
-    
-    # Check standard media_content tag (SkySports/ESPN uses this)
-    if 'media_content' in latest_item:
-        image_url = latest_item.media_content[0]['url']
-    # Check enclosures (BBC sometimes uses this)
-    elif 'media_thumbnail' in latest_item:
-        image_url = latest_item.media_thumbnail[0]['url']
-    # Fallback: Check links for image type
-    elif 'links' in latest_item:
-        for l in latest_item.links:
-            if 'image' in l.get('type', ''):
-                image_url = l['href']
-                break
-
-    # 6. Post to Facebook
-    try:
-        if image_url:
-            print(f"Posting with image: {image_url}")
-            # Download image to memory to upload
-            img_data = requests.get(image_url).content
-            graph.put_photo(image=img_data, message=message)
-        else:
-            print("No image found, posting as link.")
-            # If no image found, post the link (FB will generate the preview)
-            graph.put_object(
-                parent_object=page_id, 
-                connection_name='feed', 
-                message=message, 
-                link=link
-            )
-            
-        print("Successfully posted to Facebook!")
+    for url in RSS_FEEDS:
+        if posted: break
+        print(f"Checking {url}...")
         
-        # 7. Update the ID file
-        save_last_posted_id(article_id)
+        try:
+            feed = feedparser.parse(url)
+            for entry in feed.entries:
+                link = entry.link
+                title = entry.title
+                
+                # Filter Logic
+                if link in history: continue
+                if any(bad in title.lower() for bad in BLACKLIST): 
+                    print(f"Skipped Junk: {title}")
+                    continue
+                
+                img_url = extract_image(entry)
+                if not img_url: continue # We only want posts with images
 
-    except Exception as e:
-        print(f"Error posting to Facebook: {e}")
+                print(f"Found new article: {title}")
+
+                # --- AI MAGIC HAPPENS HERE ---
+                description = entry.get('summary', title)
+                ai_caption = get_ai_rewrite(title, description)
+                print(f"AI Generated: {ai_caption}")
+
+                # --- POST TO FACEBOOK ---
+                # 1. Download Image
+                img_data = requests.get(img_url).content
+                
+                # 2. Upload to FB
+                graph.put_photo(image=img_data, message=ai_caption)
+                
+                print("Posted successfully!")
+                
+                # 3. Save to History
+                history.append(link)
+                save_history(history)
+                posted = True
+                break # Stop processing entries
+                
+        except Exception as e:
+            print(f"Error with feed {url}: {e}")
 
 if __name__ == "__main__":
     main()
