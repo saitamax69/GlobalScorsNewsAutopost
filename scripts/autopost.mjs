@@ -34,33 +34,29 @@ const CONFIG = {
 };
 
 // ============================================
-// MASTER INSTRUCTION FOR AI
+// MASTER INSTRUCTION
 // ============================================
-const MASTER_INSTRUCTION = `You are a senior social media editor for the Facebook page "Global Score News." You write concise, clean, professional posts about football (soccer): live updates, results, analysis, previews, and predictions. You must ONLY use facts present in the provided match_data. Do not invent details.
+const MASTER_INSTRUCTION = `You are a senior social media editor for "Global Score News." Write concise, professional football posts.
 
-Constraints and style:
+Rules:
+- First line: strong hook with 1-2 emojis
+- Length: 45-110 words
+- Include team names, score, competition
+- If odds provided, mention briefly
+- Use 3-6 emojis (professional, not childish)
+- End with: "Free tips + alerts: Join Telegram 👉 https://t.me/+xAQ3DCVJa8A2ZmY8"
+- Add 5-10 hashtags including #GlobalScoreNews
+- For predictions: add "No guarantees. Bet responsibly (18+)."
+- Tone: confident, neutral, energetic
 
-First line = strong hook with 1–2 relevant emojis.
-Total length: 45–110 words (tight, scannable).
-Include team names, score/time, key scorers or moments if provided.
-If odds are provided, mention them briefly (e.g., "Odds favor X at 1.85").
-Use 3–6 tasteful emojis (no spam, no childish vibe).
-End with a clear CTA: "Free tips + real-time alerts: Join our Telegram 👉 https://t.me/+xAQ3DCVJa8A2ZmY8"
-Include 5–10 relevant hashtags. Always include #GlobalScoreNews.
-For predictions: add disclaimer: "No guarantees. Bet responsibly (18+)."
-Never claim certainty. Avoid clickbait. Keep it professional.
-Tone: confident, neutral, energetic.
-
-Output format (JSON only):
+Output JSON only:
 {
-  "post_type": "<content type>",
   "post_text": "<facebook text>",
-  "hashtags": ["#GlobalScoreNews", "..."],
-  "safety_notes": "<caveats>"
+  "hashtags": ["#GlobalScoreNews", "..."]
 }`;
 
 // ============================================
-// HELPER FUNCTIONS
+// HELPERS
 // ============================================
 
 function assertEnv() {
@@ -130,58 +126,47 @@ function wasPosted(history, key) {
 
 function recordPost(history, key, info) {
   const today = getTodayDate();
-  const now = new Date().toISOString();
-  history.posts.push({ matchKey: key, matchInfo: info, postedAt: now });
+  history.posts.push({ matchKey: key, matchInfo: info, postedAt: new Date().toISOString() });
   history.dailyCount[today] = (history.dailyCount[today] || 0) + 1;
-  history.lastPost = now;
+  history.lastPost = new Date().toISOString();
   saveHistory(history);
 }
 
 // ============================================
-// RANDOM POSTING DECISION
+// SHOULD POST NOW
 // ============================================
 
 function shouldPostNow(history) {
-  const now = new Date();
-  const hour = now.getUTCHours();
-  const today = getTodayDate();
+  const hour = new Date().getUTCHours();
   const count = getTodayCount(history);
   const hoursSince = getHoursSinceLastPost(history);
   
-  const seed = parseInt(today.replace(/-/g, ''));
+  const seed = parseInt(getTodayDate().replace(/-/g, ''));
   const target = CONFIG.MIN_POSTS_PER_DAY + (seed % (CONFIG.MAX_POSTS_PER_DAY - CONFIG.MIN_POSTS_PER_DAY + 1));
   
-  console.log(`\n📊 Decision Check:`);
-  console.log(`   Hour (UTC): ${hour} | Posts today: ${count}/${target}`);
-  console.log(`   Hours since last: ${hoursSince.toFixed(1)}`);
+  console.log(`\n📊 Check: ${count}/${target} posts | ${hoursSince.toFixed(1)}h since last`);
   
-  if (count >= target) { console.log(`   ❌ Daily limit`); return false; }
-  if (hoursSince < CONFIG.MIN_HOURS_BETWEEN_POSTS) { console.log(`   ❌ Too soon`); return false; }
+  if (count >= target) { console.log("   ❌ Daily limit"); return false; }
+  if (hoursSince < CONFIG.MIN_HOURS_BETWEEN_POSTS) { console.log("   ❌ Too soon"); return false; }
   
   let chance = CONFIG.BASE_POST_CHANCE;
   if (CONFIG.QUIET_HOURS.includes(hour)) chance *= 0.3;
   else if (CONFIG.PEAK_HOURS.includes(hour)) chance *= 1.5;
   
-  const expected = (hour / 24) * target;
-  if (count < expected - 2) chance *= 1.5;
-  
   const roll = Math.random();
   const willPost = roll < chance;
-  
-  console.log(`   🎲 Chance: ${(chance * 100).toFixed(1)}% | Roll: ${(roll * 100).toFixed(1)}%`);
-  console.log(`   ${willPost ? '✅ POSTING' : '⏭️ SKIP'}`);
+  console.log(`   🎲 ${(chance * 100).toFixed(0)}% chance | ${willPost ? '✅ POST' : '⏭️ SKIP'}`);
   
   return willPost;
 }
 
 // ============================================
-// SPORTDB API (with logos and odds)
+// SPORTDB API
 // ============================================
 
 async function fetchMatches() {
   console.log("\n📡 Fetching matches...");
   
-  // Try live first
   let res = await fetch("https://api.sportdb.dev/api/flashscore/football/live", {
     headers: { "X-API-Key": SPORTDB_API_KEY }
   });
@@ -190,118 +175,21 @@ async function fetchMatches() {
     const data = await res.json();
     const matches = Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
     if (matches.length > 0) {
-      console.log(`   Found ${matches.length} live matches`);
+      console.log(`   ${matches.length} live matches`);
       return matches;
     }
   }
   
-  // Fallback to today
   res = await fetch("https://api.sportdb.dev/api/flashscore/football/today", {
     headers: { "X-API-Key": SPORTDB_API_KEY }
   });
   
-  if (!res.ok) throw new Error(`SportDB error: ${res.status}`);
+  if (!res.ok) throw new Error(`SportDB: ${res.status}`);
   
   const data = await res.json();
   const matches = Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
-  console.log(`   Found ${matches.length} matches today`);
+  console.log(`   ${matches.length} matches today`);
   return matches;
-}
-
-// ============================================
-// ODDS API (Free)
-// ============================================
-
-async function fetchOdds(homeTeam, awayTeam) {
-  // Try to get odds from the match data first
-  // If not available, return default/null
-  console.log("   📈 Checking for odds...");
-  
-  // You can integrate with free odds APIs here
-  // For now, we'll use odds from SportDB if available
-  return null;
-}
-
-// ============================================
-// IMAGE GENERATION (Using Pollinations.ai - Free)
-// ============================================
-
-async function generateMatchImage(matchData) {
-  console.log("\n🖼️ Generating match image...");
-  
-  const { home_team, away_team, score, status, competition, odds, homeLogo, awayLogo } = matchData;
-  
-  // Create image prompt for Pollinations
-  const statusText = status === "LIVE" ? "🔴 LIVE" : 
-                     status === "HT" ? "⏸️ HALF TIME" :
-                     status === "FT" ? "✅ FULL TIME" : "📅 UPCOMING";
-  
-  const scoreText = status === "NS" ? "vs" : `${score.home} - ${score.away}`;
-  
-  // Pollinations.ai free image generation
-  const prompt = encodeURIComponent(
-    `Professional sports match graphic, dark blue gradient background, ` +
-    `"${CONFIG.PAGE_NAME}" logo at top, ` +
-    `${home_team} team emblem on left vs ${away_team} team emblem on right, ` +
-    `score "${scoreText}" in center, ` +
-    `"${competition}" text, ` +
-    `"${statusText}" badge, ` +
-    `modern minimalist design, high quality, 4k, sports broadcast style`
-  );
-  
-  // Using Pollinations.ai (completely free, no API key needed)
-  const imageUrl = `https://image.pollinations.ai/prompt/${prompt}?width=1200&height=630&nologo=true`;
-  
-  console.log(`   ✅ Image URL generated`);
-  
-  return imageUrl;
-}
-
-// Alternative: Create a simple HTML-based image using a service
-async function generateSimpleMatchImage(matchData) {
-  const { home_team, away_team, score, status, competition, homeLogo, awayLogo, odds } = matchData;
-  
-  const statusEmoji = status === "LIVE" ? "🔴" : 
-                      status === "HT" ? "⏸️" :
-                      status === "FT" ? "✅" : "📅";
-  
-  const statusText = status === "LIVE" ? "LIVE" : 
-                     status === "HT" ? "HALF TIME" :
-                     status === "FT" ? "FULL TIME" : "UPCOMING";
-  
-  const scoreText = status === "NS" ? "VS" : `${score.home} - ${score.away}`;
-  
-  // Build odds text if available
-  let oddsText = "";
-  if (odds && odds.home && odds.draw && odds.away) {
-    oddsText = `${odds.home} | ${odds.draw} | ${odds.away}`;
-  }
-  
-  // Use placeholder service with team logos
-  // This creates a consistent branded image
-  const params = new URLSearchParams({
-    title: CONFIG.PAGE_NAME,
-    home: home_team,
-    away: away_team,
-    score: scoreText,
-    status: `${statusEmoji} ${statusText}`,
-    league: competition,
-    homeLogo: homeLogo || '',
-    awayLogo: awayLogo || '',
-    odds: oddsText,
-    telegram: CONFIG.TELEGRAM_URL
-  });
-  
-  // Using Pollinations for now (free)
-  const prompt = encodeURIComponent(
-    `Minimalist football match poster, navy blue background, ` +
-    `white text "${CONFIG.PAGE_NAME}" header, ` +
-    `"${home_team} ${scoreText} ${away_team}", ` +
-    `"${competition}", "${statusEmoji} ${statusText}", ` +
-    `clean modern sports design, no people, graphic design style`
-  );
-  
-  return `https://image.pollinations.ai/prompt/${prompt}?width=1200&height=630&nologo=true`;
 }
 
 // ============================================
@@ -323,32 +211,22 @@ function pickBestMatch(matches, history) {
     (m.homeName || m.homeFirstName) && (m.awayName || m.awayFirstName)
   );
   
-  console.log(`\n🔍 Finding match...`);
-  console.log(`   Valid: ${valid.length}`);
-  
   if (!valid.length) return null;
   
   const getStatus = (m) => (m.eventStage || m.status || "").toUpperCase();
   const notPosted = valid.filter(m => !wasPosted(history, createMatchKey(m)));
-  
-  console.log(`   Not posted: ${notPosted.length}`);
-  
   const pool = notPosted.length ? notPosted : valid;
   
-  // Priority order
-  const priorities = [
+  // Priority: LIVE > HT > FT > Any
+  for (const check of [
     m => getStatus(m).includes("HALF") || getStatus(m) === "LIVE",
     m => getStatus(m).includes("HT"),
-    m => getStatus(m) === "FINISHED" || getStatus(m) === "FT",
+    m => ["FINISHED", "FT", "ENDED"].includes(getStatus(m)),
     () => true
-  ];
-  
-  for (const check of priorities) {
+  ]) {
     const filtered = pool.filter(check);
     if (filtered.length) {
-      const pick = filtered[getRandomInt(0, filtered.length - 1)];
-      console.log(`   ✅ Selected: ${pick.homeName} vs ${pick.awayName}`);
-      return pick;
+      return filtered[getRandomInt(0, filtered.length - 1)];
     }
   }
   
@@ -359,20 +237,10 @@ function transformMatch(raw) {
   const normalize = (s) => {
     const status = (s || "").toUpperCase();
     if (status.includes("HALF") || status === "LIVE" || status === "1H" || status === "2H") return "LIVE";
-    if (status === "FINISHED" || status === "ENDED" || status === "FT") return "FT";
+    if (["FINISHED", "ENDED", "FT"].includes(status)) return "FT";
     if (status.includes("HT") || status === "HALFTIME") return "HT";
     return "NS";
   };
-  
-  // Extract odds if available
-  let odds = null;
-  if (raw.odds) {
-    odds = {
-      home: raw.odds.home || raw.odds["1"] || null,
-      draw: raw.odds.draw || raw.odds["X"] || null,
-      away: raw.odds.away || raw.odds["2"] || null
-    };
-  }
   
   return {
     competition: raw.leagueName || raw.tournamentName || "",
@@ -386,47 +254,153 @@ function transformMatch(raw) {
     },
     homeLogo: raw.homeLogo || null,
     awayLogo: raw.awayLogo || null,
-    odds: odds
+    odds: raw.odds || null
   };
 }
 
-function getContentType(status) {
-  return { "LIVE": "live_update", "HT": "half_time", "FT": "full_time" }[status] || "preview";
+// ============================================
+// IMAGE GENERATION (Using quickchart.io - FREE)
+// ============================================
+
+function generateMatchImage(match) {
+  console.log("\n🖼️ Generating image...");
+  
+  const { home_team, away_team, score, status, competition, minute, odds, homeLogo, awayLogo } = match;
+  
+  // Status display
+  const statusConfig = {
+    "LIVE": { emoji: "🔴", text: "LIVE", color: "#e74c3c" },
+    "HT": { emoji: "⏸️", text: "HALF TIME", color: "#f39c12" },
+    "FT": { emoji: "✅", text: "FULL TIME", color: "#27ae60" },
+    "NS": { emoji: "📅", text: "UPCOMING", color: "#3498db" }
+  };
+  
+  const statusInfo = statusConfig[status] || statusConfig["NS"];
+  const scoreText = status === "NS" ? "VS" : `${score.home} - ${score.away}`;
+  const minuteText = minute && status === "LIVE" ? `${minute}'` : "";
+  
+  // Build odds text
+  let oddsText = "";
+  if (odds && (odds.home || odds["1"])) {
+    const h = odds.home || odds["1"] || "-";
+    const d = odds.draw || odds["X"] || "-";
+    const a = odds.away || odds["2"] || "-";
+    oddsText = `Odds: ${h} | ${d} | ${a}`;
+  }
+  
+  // Use QuickChart.io to create a professional image
+  // This creates a chart-style image that looks clean
+  const chartConfig = {
+    type: 'bar',
+    data: {
+      labels: [''],
+      datasets: [{
+        data: [0]
+      }]
+    },
+    options: {
+      plugins: {
+        title: {
+          display: true,
+          text: [
+            '⚽ GLOBAL SCORE NEWS',
+            '',
+            `${home_team}`,
+            scoreText,
+            `${away_team}`,
+            '',
+            `${statusInfo.emoji} ${statusInfo.text} ${minuteText}`,
+            competition,
+            '',
+            oddsText,
+            '📱 t.me/+xAQ3DCVJa8A2ZmY8'
+          ],
+          font: { size: 20, weight: 'bold' },
+          color: '#ffffff',
+          padding: 20
+        },
+        legend: { display: false }
+      }
+    }
+  };
+  
+  // Encode for URL
+  const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}&backgroundColor=%231a1a2e&width=800&height=600`;
+  
+  console.log("   ✅ Image URL ready");
+  return chartUrl;
 }
+
+// Better option: Create text-based image using og-image style
+function generateCleanImage(match) {
+  console.log("\n🖼️ Creating match graphic...");
+  
+  const { home_team, away_team, score, status, competition, minute, odds } = match;
+  
+  const statusText = {
+    "LIVE": "🔴 LIVE",
+    "HT": "⏸️ HALF TIME", 
+    "FT": "✅ FULL TIME",
+    "NS": "📅 UPCOMING"
+  }[status] || "📅 UPCOMING";
+  
+  const scoreText = status === "NS" ? "VS" : `${score.home} - ${score.away}`;
+  const minuteText = minute && status === "LIVE" ? ` • ${minute}'` : "";
+  
+  let oddsLine = "";
+  if (odds) {
+    const h = odds.home || odds["1"];
+    const d = odds.draw || odds["X"];
+    const a = odds.away || odds["2"];
+    if (h && d && a) oddsLine = `%0A%0AOdds: ${h} | ${d} | ${a}`;
+  }
+  
+  // Using a simple image placeholder service
+  // This creates clean, readable text on solid background
+  const text = encodeURIComponent(
+    `⚽ GLOBAL SCORE NEWS\n\n` +
+    `${home_team}\n` +
+    `${scoreText}\n` +
+    `${away_team}\n\n` +
+    `${statusText}${minuteText}\n` +
+    `${competition}` +
+    (oddsLine ? `\n\nOdds: ${odds?.home || '-'} | ${odds?.draw || '-'} | ${odds?.away || '-'}` : '') +
+    `\n\n📱 Join Telegram for Tips`
+  );
+  
+  // Using placehold.co for simple branded image
+  const imageUrl = `https://placehold.co/1200x630/1a1a2e/ffffff?text=${text.replace(/\n/g, '%0A')}`;
+  
+  console.log("   ✅ Clean image ready");
+  return imageUrl;
+}
+
+// BEST OPTION: No image, just great text
+// Facebook posts with good text often perform BETTER than bad images
 
 // ============================================
 // GROQ API
 // ============================================
 
-async function generateText(contentType, matchData) {
-  console.log("\n🤖 Generating text...");
+async function generateText(match) {
+  console.log("\n🤖 Generating post text...");
   
-  const input = {
-    page_name: CONFIG.PAGE_NAME,
-    telegram_cta_url: CONFIG.TELEGRAM_URL,
-    content_type: contentType,
-    match_data: matchData
-  };
-
+  const type = { "LIVE": "live_update", "HT": "half_time", "FT": "full_time" }[match.status] || "preview";
+  
   const prompt = `${MASTER_INSTRUCTION}
 
-Generate a ${contentType} post:
+Match: ${match.home_team} vs ${match.away_team}
+Score: ${match.score.home} - ${match.score.away}
+Status: ${match.status}${match.minute ? ` (${match.minute}')` : ''}
+Competition: ${match.competition}
+${match.odds ? `Odds: Home ${match.odds.home || match.odds["1"] || '-'} | Draw ${match.odds.draw || match.odds["X"] || '-'} | Away ${match.odds.away || match.odds["2"] || '-'}` : ''}
 
-${JSON.stringify(input, null, 2)}
+Generate a ${type} post. Return JSON only.`;
 
-Return ONLY valid JSON.`;
-
-  const models = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "llama3-70b-8192",
-    "mixtral-8x7b-32768"
-  ];
+  const models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"];
   
   for (const model of models) {
     try {
-      console.log(`   Trying: ${model}`);
-      
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -436,18 +410,13 @@ Return ONLY valid JSON.`;
         body: JSON.stringify({
           model,
           messages: [
-            { role: "system", content: "Respond with valid JSON only." },
+            { role: "system", content: "Respond with valid JSON only. No markdown." },
             { role: "user", content: prompt }
           ],
           temperature: 0.7,
-          max_tokens: 1024
+          max_tokens: 800
         })
       });
-      
-      if (res.status === 429) {
-        await delay(3000);
-        continue;
-      }
       
       if (!res.ok) continue;
       
@@ -456,16 +425,12 @@ Return ONLY valid JSON.`;
       
       // Clean JSON
       text = text.trim();
-      if (text.startsWith("```json")) text = text.slice(7);
-      if (text.startsWith("```")) text = text.slice(3);
-      if (text.endsWith("```")) text = text.slice(0, -3);
-      text = text.trim();
-      
+      if (text.startsWith("```")) text = text.replace(/```json?|```/g, "").trim();
       const start = text.indexOf("{");
       const end = text.lastIndexOf("}");
       if (start !== -1 && end !== -1) text = text.slice(start, end + 1);
       
-      console.log(`   ✅ Success!`);
+      console.log("   ✅ Text generated");
       return JSON.parse(text);
       
     } catch (e) {
@@ -473,56 +438,54 @@ Return ONLY valid JSON.`;
     }
   }
   
-  throw new Error("All models failed");
+  throw new Error("Text generation failed");
 }
 
 // ============================================
-// FACEBOOK API (with image)
+// FACEBOOK API
 // ============================================
 
 async function postToFacebook(message, imageUrl = null) {
   console.log("\n📘 Posting to Facebook...");
   
-  let endpoint, body;
-  
+  // Try with image first
   if (imageUrl) {
-    // Post with image
-    endpoint = `https://graph.facebook.com/v19.0/${FB_PAGE_ID}/photos`;
-    body = new URLSearchParams({
-      url: imageUrl,
-      caption: message,
-      access_token: FB_PAGE_ACCESS_TOKEN
-    });
-    console.log(`   📷 With image`);
-  } else {
-    // Text only post
-    endpoint = `https://graph.facebook.com/v19.0/${FB_PAGE_ID}/feed`;
-    body = new URLSearchParams({
-      message: message,
-      access_token: FB_PAGE_ACCESS_TOKEN
-    });
-    console.log(`   📝 Text only`);
+    try {
+      const res = await fetch(`https://graph.facebook.com/v19.0/${FB_PAGE_ID}/photos`, {
+        method: "POST",
+        body: new URLSearchParams({
+          url: imageUrl,
+          caption: message,
+          access_token: FB_PAGE_ACCESS_TOKEN
+        })
+      });
+      
+      if (res.ok) {
+        console.log("   📷 Posted with image");
+        return res.json();
+      }
+      console.log("   ⚠️ Image failed, posting text only");
+    } catch (e) {
+      console.log("   ⚠️ Image error, posting text only");
+    }
   }
   
-  const res = await fetch(endpoint, {
+  // Fallback: text only
+  const res = await fetch(`https://graph.facebook.com/v19.0/${FB_PAGE_ID}/feed`, {
     method: "POST",
-    body: body
+    body: new URLSearchParams({
+      message: message,
+      access_token: FB_PAGE_ACCESS_TOKEN
+    })
   });
   
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Facebook error ${res.status}: ${err}`);
+    throw new Error(`Facebook: ${res.status} - ${err}`);
   }
   
+  console.log("   📝 Posted text");
   return res.json();
-}
-
-function buildMessage(response) {
-  const text = response.post_text || "";
-  const tags = response.hashtags || [];
-  
-  if (text.includes("#GlobalScoreNews")) return text;
-  return `${text}\n\n${tags.join(" ")}`.trim();
 }
 
 // ============================================
@@ -530,77 +493,58 @@ function buildMessage(response) {
 // ============================================
 
 async function main() {
-  console.log("🚀 Global Score News Autopost v2.0");
-  console.log("=".repeat(50));
-  console.log(`⏰ ${new Date().toISOString()}`);
+  console.log("🚀 Global Score News");
+  console.log("=".repeat(40));
   
   assertEnv();
   
   const history = loadHistory();
   
   if (!FORCE_POST && !shouldPostNow(history)) {
-    console.log("\n👋 Skipping this run.");
+    console.log("\n👋 Skipping.");
     return;
   }
   
-  if (FORCE_POST) console.log("\n⚡ FORCE POST");
-  
   const matches = await fetchMatches();
-  if (!matches?.length) { console.log("\n⚠️ No matches."); return; }
+  if (!matches?.length) { console.log("⚠️ No matches"); return; }
   
   const raw = pickBestMatch(matches, history);
-  if (!raw) { console.log("\n⚠️ No match found."); return; }
+  if (!raw) { console.log("⚠️ No match"); return; }
   
   const match = transformMatch(raw);
-  const key = createMatchKey(raw);
+  console.log(`\n📋 ${match.home_team} ${match.score.home}-${match.score.away} ${match.away_team}`);
+  console.log(`   ${match.status} | ${match.competition}`);
   
-  console.log(`\n📋 Match: ${match.home_team} vs ${match.away_team}`);
-  console.log(`   ${match.status} | ${match.score.home}-${match.score.away}`);
-  console.log(`   ${match.competition}`);
-  if (match.odds) {
-    console.log(`   Odds: ${match.odds.home} | ${match.odds.draw} | ${match.odds.away}`);
-  }
-  
-  if (match.home_team === "Unknown") { console.log("\n⚠️ Invalid data."); return; }
-  
-  const type = getContentType(match.status);
+  if (match.home_team === "Unknown") { console.log("⚠️ Invalid"); return; }
   
   // Generate text
-  const response = await generateText(type, match);
-  const message = buildMessage(response);
+  const response = await generateText(match);
+  const message = response.post_text + "\n\n" + (response.hashtags?.join(" ") || "#GlobalScoreNews #Football");
   
-  // Generate image
+  // Option: Skip image for now (better engagement with good text)
+  // Or use simple image
   let imageUrl = null;
-  try {
-    imageUrl = await generateSimpleMatchImage(match);
-    console.log(`   🖼️ Image ready`);
-  } catch (e) {
-    console.log(`   ⚠️ Image failed: ${e.message}`);
-  }
   
-  console.log("\n" + "=".repeat(50));
-  console.log("📝 POST:");
-  console.log("=".repeat(50));
+  // Uncomment below to enable simple images:
+  // imageUrl = generateCleanImage(match);
+  
+  console.log("\n" + "=".repeat(40));
   console.log(message);
-  if (imageUrl) console.log(`\n🖼️ Image: ${imageUrl.slice(0, 80)}...`);
-  console.log("=".repeat(50));
+  console.log("=".repeat(40));
   
-  // Post to Facebook
   const result = await postToFacebook(message, imageUrl);
   console.log(`\n✅ Posted! ID: ${result.id || result.post_id}`);
   
-  // Record
-  recordPost(history, key, {
+  recordPost(history, createMatchKey(raw), {
     home: match.home_team,
     away: match.away_team,
-    score: `${match.score.home}-${match.score.away}`,
-    status: match.status
+    score: `${match.score.home}-${match.score.away}`
   });
   
-  console.log(`📊 Today's posts: ${getTodayCount(history)}`);
+  console.log(`📊 Today: ${getTodayCount(history)} posts`);
 }
 
 main().catch((e) => {
-  console.error("\n❌ Error:", e.message);
+  console.error("❌", e.message);
   process.exit(1);
 });
