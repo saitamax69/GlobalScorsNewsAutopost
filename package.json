@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "private": true,
-  "description": "Auto-post football updates to Facebook",
+  "description": "Auto-post football updates to Facebook with random timing",
   "scripts": {
-    "start": "node scripts/autopost.mjs"
+    "start": "node scripts/autopost.mjs",
+    "schedule": "node scripts/scheduler.mjs"
   },
   "engines": {
     "node": ">=18.0.0"
