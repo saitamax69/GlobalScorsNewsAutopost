@@ -1,3 +1,15 @@
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// ============================================
+// FILE PATHS
+// ============================================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const DATA_DIR = join(__dirname, '..', 'data');
+const POSTED_FILE = join(DATA_DIR, 'posted.json');
+
 // ============================================
 // ENVIRONMENT VARIABLES
 // ============================================
@@ -5,9 +17,31 @@ const SPORTDB_API_KEY = process.env.SPORTDB_API_KEY;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const FB_PAGE_ID = process.env.FB_PAGE_ID;
 const FB_PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
+const FORCE_POST = process.env.FORCE_POST === 'true';
 
 // ============================================
-// MASTER INSTRUCTION
+// CONFIGURATION
+// ============================================
+const CONFIG = {
+  // Target posts per day (will vary randomly between min and max)
+  MIN_POSTS_PER_DAY: 10,
+  MAX_POSTS_PER_DAY: 14,
+  
+  // Minimum hours between posts (prevents spam)
+  MIN_HOURS_BETWEEN_POSTS: 1,
+  
+  // Peak hours (more likely to post) - 24h format UTC
+  PEAK_HOURS: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+  
+  // Quiet hours (less likely to post) - 24h format UTC
+  QUIET_HOURS: [0, 1, 2, 3, 4, 5, 6, 7],
+  
+  // Chance to post during each check (adjusted by time of day)
+  BASE_POST_CHANCE: 0.25  // 25% base chance every 30 min
+};
+
+// ============================================
+// MASTER INSTRUCTION FOR AI
 // ============================================
 const MASTER_INSTRUCTION = `You are a senior social media editor for the Facebook page "Global Score News." You write concise, clean, professional posts about football (soccer): live updates, results, analysis, previews, and predictions. You must ONLY use facts present in the provided match_data. Do not invent details.
 
@@ -25,7 +59,7 @@ Language: English (default).
 Tone: confident, neutral, energetic—not hype.
 If a field in match_data is missing, omit it gracefully.
 
-Output format (JSON only, no extra text):
+Output format (JSON only, no markdown, no extra text):
 {
   "post_type": "<one of the content types>",
   "title": "<optional, short>",
@@ -46,311 +80,111 @@ function assertEnv() {
       throw new Error(`Missing: ${key}`);
     }
   }
-  console.log("✅ All environment variables present");
+  console.log("✅ Environment variables OK");
 }
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ============================================
-// SPORTDB API
-// ============================================
-
-async function fetchLiveMatches() {
-  const res = await fetch("https://api.sportdb.dev/api/flashscore/football/live", {
-    headers: { "X-API-Key": SPORTDB_API_KEY }
-  });
-  
-  if (!res.ok) return [];
-  
-  const data = await res.json();
-  return Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-async function fetchTodayMatches() {
-  const res = await fetch("https://api.sportdb.dev/api/flashscore/football/today", {
-    headers: { "X-API-Key": SPORTDB_API_KEY }
-  });
-  
-  if (!res.ok) throw new Error(`SportDB error: ${res.status}`);
-  
-  const data = await res.json();
-  return Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
+// ============================================
+// POSTED HISTORY MANAGEMENT
+// ============================================
+
+function ensureDataDir() {
+  if (!existsSync(DATA_DIR)) {
+    mkdirSync(DATA_DIR, { recursive: true });
+  }
 }
 
-async function fetchAllMatches() {
-  console.log("📡 Fetching matches from SportDB...");
+function loadPostedHistory() {
+  ensureDataDir();
   
-  let matches = await fetchLiveMatches();
-  if (matches.length > 0) {
-    console.log(`Found ${matches.length} live matches`);
-    return matches;
+  if (!existsSync(POSTED_FILE)) {
+    return { posts: [], dailyCount: {}, lastPost: null };
   }
   
-  matches = await fetchTodayMatches();
-  console.log(`Found ${matches.length} matches today`);
-  return matches;
+  try {
+    const data = readFileSync(POSTED_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch {
+    return { posts: [], dailyCount: {}, lastPost: null };
+  }
 }
 
-// ============================================
-// MATCH SELECTION
-// ============================================
-
-function pickBestMatch(matches) {
-  if (!matches?.length) return null;
+function savePostedHistory(history) {
+  ensureDataDir();
   
-  const hasValidTeams = (m) => (m.homeName || m.homeFirstName) && (m.awayName || m.awayFirstName);
-  const validMatches = matches.filter(hasValidTeams);
+  // Keep only last 100 posts to prevent file from growing too large
+  if (history.posts.length > 100) {
+    history.posts = history.posts.slice(-100);
+  }
   
-  console.log(`Found ${validMatches.length} valid matches`);
-  if (!validMatches.length) return matches[0];
+  // Clean old daily counts (keep only last 7 days)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const cutoffDate = sevenDaysAgo.toISOString().split('T')[0];
   
-  const getStatus = (m) => (m.eventStage || m.status || "").toUpperCase();
-  
-  // Priority: LIVE > HT > FT > Any
-  const live = validMatches.find(m => {
-    const s = getStatus(m);
-    return s.includes("HALF") || s === "LIVE" || s === "1H" || s === "2H";
-  });
-  if (live) { console.log("🔴 Selected LIVE match"); return live; }
-  
-  const ht = validMatches.find(m => getStatus(m).includes("HT") || getStatus(m).includes("HALFTIME"));
-  if (ht) { console.log("⏸️ Selected HT match"); return ht; }
-  
-  const ft = validMatches.find(m => {
-    const s = getStatus(m);
-    return s === "FINISHED" || s === "FT" || s === "ENDED";
-  });
-  if (ft) { console.log("✅ Selected FT match"); return ft; }
-  
-  console.log("📌 Selected first match");
-  return validMatches[0];
-}
-
-function transformToMatchData(raw) {
-  const normalizeStatus = (stage) => {
-    const s = (stage || "").toUpperCase();
-    if (s.includes("HALF") || s === "LIVE" || s === "1H" || s === "2H") return "LIVE";
-    if (s === "FINISHED" || s === "ENDED" || s === "FT") return "FT";
-    if (s.includes("HT") || s === "HALFTIME") return "HT";
-    return "NS";
-  };
-  
-  return {
-    competition: raw.leagueName || raw.tournamentName || "",
-    home_team: raw.homeName || raw.homeFirstName || "Unknown",
-    away_team: raw.awayName || raw.awayFirstName || "Unknown",
-    status: normalizeStatus(raw.eventStage || raw.status),
-    minute: raw.gameTime !== "-1" ? raw.gameTime : null,
-    score: {
-      home: parseInt(raw.homeScore) || parseInt(raw.homeFullTimeScore) || 0,
-      away: parseInt(raw.awayScore) || parseInt(raw.awayFullTimeScore) || 0
-    }
-  };
-}
-
-function determineContentType(status) {
-  const types = { "LIVE": "live_update", "HT": "half_time", "FT": "full_time" };
-  return types[status] || "preview";
-}
-
-// ============================================
-// GROQ API
-// ============================================
-
-async function generateWithGroq(contentType, matchData) {
-  console.log("🤖 Generating post with Groq...");
-  
-  const input = {
-    page_name: "Global Score News",
-    telegram_cta_url: "https://t.me/+xAQ3DCVJa8A2ZmY8",
-    content_type: contentType,
-    language: "en",
-    match_data: matchData
-  };
-
-  const prompt = `${MASTER_INSTRUCTION}
-
-Generate a ${contentType} post for this match:
-
-${JSON.stringify(input, null, 2)}
-
-IMPORTANT: Return ONLY valid JSON, no markdown, no extra text.`;
-
-  // Updated Groq models list
-  const models = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "llama3-70b-8192",
-    "llama3-8b-8192",
-    "mixtral-8x7b-32768",
-    "gemma2-9b-it"
-  ];
-  
-  let lastError = null;
-  
-  for (const model of models) {
-    try {
-      console.log(`   Trying model: ${model}`);
-      
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            {
-              role: "system",
-              content: "You are a professional social media editor. Always respond with valid JSON only, no markdown code blocks."
-            },
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 1024
-        })
-      });
-      
-      if (res.status === 429) {
-        console.log("   ⚠️ Rate limited, waiting 5 seconds...");
-        await delay(5000);
-        continue;
-      }
-      
-      if (!res.ok) {
-        const errText = await res.text();
-        console.log(`   ❌ ${model} failed: ${res.status} - ${errText.slice(0, 100)}`);
-        lastError = new Error(`${model}: ${res.status}`);
-        continue;
-      }
-      
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content || "";
-      
-      if (!text) {
-        console.log(`   ⚠️ Empty response from ${model}`);
-        continue;
-      }
-      
-      // Parse JSON from response
-      let cleaned = text.trim();
-      
-      // Remove markdown code blocks if present
-      if (cleaned.startsWith("```json")) {
-        cleaned = cleaned.slice(7);
-      } else if (cleaned.startsWith("```")) {
-        cleaned = cleaned.slice(3);
-      }
-      if (cleaned.endsWith("```")) {
-        cleaned = cleaned.slice(0, -3);
-      }
-      cleaned = cleaned.trim();
-      
-      // Try to find JSON object in response
-      const jsonStart = cleaned.indexOf("{");
-      const jsonEnd = cleaned.lastIndexOf("}");
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        cleaned = cleaned.slice(jsonStart, jsonEnd + 1);
-      }
-      
-      const parsed = JSON.parse(cleaned);
-      console.log(`   ✅ Success with ${model}!`);
-      return parsed;
-      
-    } catch (error) {
-      console.log(`   ⚠️ Error with ${model}: ${error.message}`);
-      lastError = error;
-      continue;
+  for (const date in history.dailyCount) {
+    if (date < cutoffDate) {
+      delete history.dailyCount[date];
     }
   }
   
-  throw lastError || new Error("All Groq models failed");
+  writeFileSync(POSTED_FILE, JSON.stringify(history, null, 2));
 }
 
-// ============================================
-// FACEBOOK API
-// ============================================
+function getTodayDate() {
+  return new Date().toISOString().split('T')[0];
+}
 
-async function postToFacebook(message) {
-  console.log("📘 Posting to Facebook...");
+function getTodayPostCount(history) {
+  const today = getTodayDate();
+  return history.dailyCount[today] || 0;
+}
+
+function getHoursSinceLastPost(history) {
+  if (!history.lastPost) return 999;
   
-  const res = await fetch(`https://graph.facebook.com/v19.0/${FB_PAGE_ID}/feed`, {
-    method: "POST",
-    body: new URLSearchParams({
-      message: message,
-      access_token: FB_PAGE_ACCESS_TOKEN
-    })
+  const lastPostTime = new Date(history.lastPost);
+  const now = new Date();
+  const diffMs = now - lastPostTime;
+  return diffMs / (1000 * 60 * 60);
+}
+
+function wasMatchPosted(history, matchKey) {
+  return history.posts.some(p => p.matchKey === matchKey);
+}
+
+function recordPost(history, matchKey, matchInfo) {
+  const today = getTodayDate();
+  const now = new Date().toISOString();
+  
+  history.posts.push({
+    matchKey,
+    matchInfo,
+    postedAt: now
   });
   
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Facebook error ${res.status}: ${errText}`);
-  }
+  history.dailyCount[today] = (history.dailyCount[today] || 0) + 1;
+  history.lastPost = now;
   
-  return res.json();
-}
-
-function buildMessage(response) {
-  const postText = response.post_text || "";
-  const hashtags = response.hashtags || [];
-  
-  if (postText.includes("#GlobalScoreNews")) return postText;
-  return `${postText}\n\n${hashtags.join(" ")}`.trim();
+  savePostedHistory(history);
 }
 
 // ============================================
-// MAIN
+// RANDOM POSTING DECISION
 // ============================================
 
-async function main() {
-  console.log("🚀 Starting Global Score News Autopost...\n");
+function shouldPostNow(history) {
+  const now = new Date();
+  const currentHour = now.getUTCHours();
+  const today = getTodayDate();
+  const todayCount = getTodayPostCount(history);
+  const hoursSinceLastPost = getHoursSinceLastPost(history);
   
-  assertEnv();
-  
-  const matches = await fetchAllMatches();
-  if (!matches?.length) { 
-    console.log("⚠️ No matches found. Exiting."); 
-    return; 
-  }
-  
-  const rawMatch = pickBestMatch(matches);
-  if (!rawMatch) { 
-    console.log("⚠️ No suitable match. Exiting."); 
-    return; 
-  }
-  
-  const matchData = transformToMatchData(rawMatch);
-  console.log(`\n📋 Match: ${matchData.home_team} vs ${matchData.away_team}`);
-  console.log(`   Status: ${matchData.status} | Score: ${matchData.score.home}-${matchData.score.away}`);
-  console.log(`   Competition: ${matchData.competition}\n`);
-  
-  if (matchData.home_team === "Unknown") { 
-    console.log("⚠️ Invalid match data. Exiting."); 
-    return; 
-  }
-  
-  const contentType = determineContentType(matchData.status);
-  console.log(`📝 Content type: ${contentType}\n`);
-  
-  const response = await generateWithGroq(contentType, matchData);
-  console.log("✅ Post generated!\n");
-  
-  const message = buildMessage(response);
-  console.log("--- POST PREVIEW ---");
-  console.log(message);
-  console.log("--- END PREVIEW ---\n");
-  
-  const fbResult = await postToFacebook(message);
-  console.log(`✅ Posted to Facebook! ID: ${fbResult.id}`);
-}
-
-main().catch((error) => {
-  console.error("❌ Error:", error.message);
-  process.exit(1);
-});
+  // Determine today's target (random between min and 
