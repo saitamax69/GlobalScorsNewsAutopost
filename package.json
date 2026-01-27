@@ -7,9 +7,6 @@
   "scripts": {
     "start": "node scripts/autopost.mjs"
   },
-  "dependencies": {
-    "node-fetch": "^3.3.2"
-  },
   "engines": {
     "node": ">=18.0.0"
   }
