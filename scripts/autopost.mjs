@@ -54,6 +54,11 @@ function assertEnv() {
   console.log("✅ All environment variables present");
 }
 
+// Simple delay function for rate limiting
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 // ============================================
 // SPORTDB API FUNCTIONS
 // ============================================
@@ -70,15 +75,7 @@ async function fetchLiveMatches() {
   }
   
   const data = await res.json();
-  
-  // Debug: Log the structure of the first match
   const matches = Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
-  if (matches.length > 0) {
-    console.log("\n🔍 DEBUG - First match structure:");
-    console.log(JSON.stringify(matches[0], null, 2).slice(0, 1000));
-    console.log("\n");
-  }
-  
   return matches;
 }
 
@@ -99,7 +96,6 @@ async function fetchTodayMatches() {
 async function fetchAllMatches() {
   console.log("📡 Fetching matches from SportDB...");
   
-  // Try live matches first
   let matches = await fetchLiveMatches();
   
   if (matches.length > 0) {
@@ -107,7 +103,6 @@ async function fetchAllMatches() {
     return matches;
   }
   
-  // Fall back to today's matches
   matches = await fetchTodayMatches();
   console.log(`Found ${matches.length} matches today`);
   return matches;
@@ -117,21 +112,20 @@ async function fetchAllMatches() {
 // MATCH SELECTION & TRANSFORMATION
 // ============================================
 
+function getMatchStatus(m) {
+  const stage = (m.eventStage || m.status || m.state || "").toString().toUpperCase();
+  return stage;
+}
+
 function pickBestMatch(matches) {
   if (!matches || matches.length === 0) {
     return null;
   }
   
-  // Priority: LIVE > HT > FT > NS (upcoming)
-  const getStatus = (m) => {
-    const status = m.status || m.state || m.STATUS || m.matchStatus || "";
-    return status.toString().toUpperCase();
-  };
-  
-  // Find live match (with valid team names)
+  // Filter matches with valid team names
   const hasValidTeams = (m) => {
-    const home = m.HOME_NAME || m.homeName || m.home_name || m.homeTeam?.name || m.home?.name || "";
-    const away = m.AWAY_NAME || m.awayName || m.away_name || m.awayTeam?.name || m.away?.name || "";
+    const home = m.homeName || m.homeFirstName || "";
+    const away = m.awayName || m.awayFirstName || "";
     return home.length > 0 && away.length > 0;
   };
   
@@ -139,132 +133,89 @@ function pickBestMatch(matches) {
   console.log(`Found ${validMatches.length} matches with valid team names`);
   
   if (validMatches.length === 0) {
-    // Return first match anyway for debugging
     return matches[0];
   }
   
-  // Find live match
+  // Priority 1: LIVE matches (1ST HALF, 2ND HALF)
   const live = validMatches.find(m => {
-    const s = getStatus(m);
-    return s === "LIVE" || s === "1H" || s === "2H" || s.includes("LIVE");
+    const s = getMatchStatus(m);
+    return s === "LIVE" || s === "1ST HALF" || s === "2ND HALF" || 
+           s === "1H" || s === "2H" || s.includes("HALF");
   });
   if (live) {
     console.log("🔴 Selected LIVE match");
     return live;
   }
   
-  // Find half-time match
-  const ht = validMatches.find(m => getStatus(m) === "HT" || getStatus(m) === "HALFTIME");
+  // Priority 2: HALF TIME
+  const ht = validMatches.find(m => {
+    const s = getMatchStatus(m);
+    return s === "HALFTIME" || s === "HT" || s === "HALF TIME";
+  });
   if (ht) {
     console.log("⏸️ Selected HT match");
     return ht;
   }
   
-  // Find finished match
+  // Priority 3: FINISHED matches
   const ft = validMatches.find(m => {
-    const s = getStatus(m);
-    return s === "FT" || s === "FINISHED" || s === "ENDED" || s === "AET";
+    const s = getMatchStatus(m);
+    return s === "FINISHED" || s === "FT" || s === "ENDED" || s === "AET" || s === "AFTER ET";
   });
   if (ft) {
     console.log("✅ Selected FT match");
     return ft;
   }
   
-  // Find upcoming match
-  const ns = validMatches.find(m => {
-    const s = getStatus(m);
-    return s === "NS" || s === "SCHEDULED" || s === "NOTSTARTED" || s === "";
+  // Priority 4: Upcoming matches - try to find a bigger league
+  const bigLeagues = ["PREMIER LEAGUE", "LA LIGA", "BUNDESLIGA", "SERIE A", "LIGUE 1", 
+                      "CHAMPIONS LEAGUE", "EUROPA LEAGUE", "WORLD CUP", "EURO"];
+  
+  const bigLeagueMatch = validMatches.find(m => {
+    const league = (m.leagueName || m.tournamentName || m.competition || "").toUpperCase();
+    return bigLeagues.some(bl => league.includes(bl));
   });
-  if (ns) {
-    console.log("📅 Selected upcoming match");
-    return ns;
+  
+  if (bigLeagueMatch) {
+    console.log("🏆 Selected big league match");
+    return bigLeagueMatch;
   }
   
-  // Return first valid match as fallback
+  // Return first valid match
   console.log("📌 Selected first valid match");
   return validMatches[0];
 }
 
 function transformToMatchData(raw) {
-  // Try multiple possible field names (SportDB might use different formats)
-  const getTeamName = (raw, type) => {
-    if (type === "home") {
-      return raw.HOME_NAME || 
-             raw.homeName || 
-             raw.home_name || 
-             raw.homeTeam?.name || 
-             raw.home?.name ||
-             raw.homeTeam ||
-             raw.home ||
-             (typeof raw.HOME === "string" ? raw.HOME : raw.HOME?.name) ||
-             "Unknown Home";
-    } else {
-      return raw.AWAY_NAME || 
-             raw.awayName || 
-             raw.away_name || 
-             raw.awayTeam?.name || 
-             raw.away?.name ||
-             raw.awayTeam ||
-             raw.away ||
-             (typeof raw.AWAY === "string" ? raw.AWAY : raw.AWAY?.name) ||
-             "Unknown Away";
-    }
-  };
-  
-  const getScore = (raw) => {
-    // Try different score field formats
-    const homeScore = raw.HOME_SCORE ?? raw.homeScore ?? raw.home_score ?? 
-                      raw.score?.home ?? raw.SCORE?.home ?? 
-                      raw.result?.home ?? 0;
-    const awayScore = raw.AWAY_SCORE ?? raw.awayScore ?? raw.away_score ?? 
-                      raw.score?.away ?? raw.SCORE?.away ?? 
-                      raw.result?.away ?? 0;
-    
-    return {
-      home: parseInt(homeScore) || 0,
-      away: parseInt(awayScore) || 0
-    };
-  };
-  
-  const normalizeStatus = (status) => {
-    const s = (status || "").toString().toUpperCase();
-    if (s === "1H" || s === "2H" || s === "LIVE" || s === "INPROGRESS" || s.includes("LIVE")) return "LIVE";
+  const normalizeStatus = (stage) => {
+    const s = (stage || "").toString().toUpperCase();
+    if (s === "1ST HALF" || s === "2ND HALF" || s === "1H" || s === "2H" || 
+        s === "LIVE" || s.includes("HALF")) return "LIVE";
     if (s === "FINISHED" || s === "ENDED" || s === "FT" || s === "AET") return "FT";
-    if (s === "HALFTIME" || s === "HT") return "HT";
-    if (s === "SCHEDULED" || s === "NOTSTARTED" || s === "NS" || s === "") return "NS";
-    return s || "NS";
-  };
-  
-  const getCompetition = (raw) => {
-    return raw.LEAGUE_NAME ||
-           raw.leagueName ||
-           raw.league_name ||
-           raw.competition?.name ||
-           raw.league?.name ||
-           raw.tournament?.name ||
-           raw.competition ||
-           raw.league ||
-           raw.tournament ||
-           "";
+    if (s === "HALFTIME" || s === "HT" || s === "HALF TIME") return "HT";
+    return "NS";
   };
   
   return {
-    competition: getCompetition(raw),
-    round: raw.round || raw.matchday || raw.ROUND || "",
-    home_team: getTeamName(raw, "home"),
-    away_team: getTeamName(raw, "away"),
-    status: normalizeStatus(raw.status || raw.state || raw.STATUS || raw.matchStatus),
-    minute: raw.minute ?? raw.time ?? raw.MINUTE ?? raw.currentMinute ?? null,
-    score: getScore(raw),
-    scorers: raw.scorers || raw.goals || raw.SCORERS || [],
-    events: raw.events || raw.incidents || raw.EVENTS || [],
-    stats: raw.stats || raw.statistics || raw.STATS || {},
+    competition: raw.leagueName || raw.tournamentName || raw.competition || "",
+    round: raw.round || raw.matchday || "",
+    home_team: raw.homeName || raw.homeFirstName || "Unknown",
+    away_team: raw.awayName || raw.awayFirstName || "Unknown",
+    status: normalizeStatus(raw.eventStage || raw.status),
+    minute: raw.gameTime && raw.gameTime !== "-1" ? raw.gameTime : null,
+    score: {
+      home: parseInt(raw.homeScore) || parseInt(raw.homeFullTimeScore) || 0,
+      away: parseInt(raw.awayScore) || parseInt(raw.awayFullTimeScore) || 0
+    },
+    scorers: raw.scorers || [],
+    events: raw.events || [],
+    stats: raw.stats || {},
     form: raw.form || {},
-    h2h: raw.h2h || raw.headToHead || {},
+    h2h: raw.h2h || {},
     odds_like: raw.odds || {},
-    venue: raw.venue || raw.stadium || raw.VENUE || "",
-    kickoff_iso: raw.kickoff_iso || raw.datetime || raw.startTime || raw.date || raw.START_TIME || "",
-    notes: raw.notes || ""
+    venue: raw.venue || "",
+    kickoff_iso: raw.startTime || raw.datetime || "",
+    notes: ""
   };
 }
 
@@ -283,7 +234,7 @@ function determineContentType(status) {
 }
 
 // ============================================
-// GEMINI API (FIXED MODEL NAME)
+// GEMINI API (FIXED WITH RETRY)
 // ============================================
 
 async function generatePostWithGemini(contentType, matchData) {
@@ -297,75 +248,83 @@ async function generatePostWithGemini(contentType, matchData) {
     match_data: matchData
   };
   
-  // Try different model names
+  // Updated model list with correct names
   const models = [
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-flash-001",
-    "gemini-pro"
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-flash"
   ];
   
+  const maxRetries = 3;
   let lastError = null;
   
   for (const model of models) {
-    try {
-      console.log(`   Trying model: ${model}`);
-      
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-      
-      const requestBody = {
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: MASTER_INSTRUCTION }]
-          },
-          {
-            role: "user",
-            parts: [{ text: `Generate a ${contentType} post for this match:\n\n${JSON.stringify(input, null, 2)}` }]
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`   Trying model: ${model} (attempt ${attempt}/${maxRetries})`);
+        
+        // Use v1 instead of v1beta
+        const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        
+        const requestBody = {
+          contents: [
+            {
+              parts: [
+                { text: MASTER_INSTRUCTION },
+                { text: `Generate a ${contentType} post for this match:\n\n${JSON.stringify(input, null, 2)}` }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024
           }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1024
+        };
+        
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody)
+        });
+        
+        if (res.status === 429) {
+          console.log(`   ⚠️ Rate limited. Waiting 10 seconds...`);
+          await delay(10000);
+          continue;
         }
-      };
-      
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody)
-      });
-      
-      if (!res.ok) {
-        const errText = await res.text();
-        console.log(`   Model ${model} failed: ${res.status}`);
-        lastError = new Error(`Gemini API error ${res.status}: ${errText}`);
-        continue;
+        
+        if (!res.ok) {
+          const errText = await res.text();
+          console.log(`   Model ${model} failed: ${res.status}`);
+          lastError = new Error(`Gemini API error ${res.status}: ${errText}`);
+          break; // Try next model
+        }
+        
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        
+        // Clean up and parse JSON response
+        let cleaned = text.trim();
+        
+        if (cleaned.startsWith("```json")) {
+          cleaned = cleaned.slice(7);
+        } else if (cleaned.startsWith("```")) {
+          cleaned = cleaned.slice(3);
+        }
+        if (cleaned.endsWith("```")) {
+          cleaned = cleaned.slice(0, -3);
+        }
+        cleaned = cleaned.trim();
+        
+        console.log(`   ✅ Model ${model} worked!`);
+        return JSON.parse(cleaned);
+        
+      } catch (error) {
+        lastError = error;
+        if (attempt < maxRetries) {
+          console.log(`   Retrying in 5 seconds...`);
+          await delay(5000);
+        }
       }
-      
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      
-      // Clean up and parse JSON response
-      let cleaned = text.trim();
-      
-      // Remove markdown code fences if present
-      if (cleaned.startsWith("```json")) {
-        cleaned = cleaned.slice(7);
-      } else if (cleaned.startsWith("```")) {
-        cleaned = cleaned.slice(3);
-      }
-      if (cleaned.endsWith("```")) {
-        cleaned = cleaned.slice(0, -3);
-      }
-      cleaned = cleaned.trim();
-      
-      console.log(`   ✅ Model ${model} worked!`);
-      return JSON.parse(cleaned);
-      
-    } catch (error) {
-      lastError = error;
-      continue;
     }
   }
   
@@ -403,33 +362,12 @@ function buildFacebookMessage(geminiResponse) {
   const postText = geminiResponse.post_text || "";
   const hashtags = geminiResponse.hashtags || [];
   
-  // Check if hashtags are already in post_text
-  const hashtagsText = hashtags.join(" ");
-  
   if (postText.includes("#GlobalScoreNews")) {
     return postText;
   }
   
+  const hashtagsText = hashtags.join(" ");
   return `${postText}\n\n${hashtagsText}`.trim();
-}
-
-// ============================================
-// DUPLICATE POST PREVENTION
-// ============================================
-
-let lastPostedMatch = null;
-
-function createMatchKey(matchData) {
-  return `${matchData.home_team}_${matchData.away_team}_${matchData.status}_${matchData.score.home}_${matchData.score.away}`;
-}
-
-function isDuplicate(matchData) {
-  const key = createMatchKey(matchData);
-  if (lastPostedMatch === key) {
-    return true;
-  }
-  lastPostedMatch = key;
-  return false;
 }
 
 // ============================================
@@ -439,10 +377,8 @@ function isDuplicate(matchData) {
 async function main() {
   console.log("🚀 Starting Global Score News Autopost...\n");
   
-  // Validate environment
   assertEnv();
   
-  // Fetch matches
   const matches = await fetchAllMatches();
   
   if (!matches || matches.length === 0) {
@@ -450,7 +386,6 @@ async function main() {
     return;
   }
   
-  // Pick best match to post about
   const rawMatch = pickBestMatch(matches);
   
   if (!rawMatch) {
@@ -458,47 +393,33 @@ async function main() {
     return;
   }
   
-  // Transform to our format
   const matchData = transformToMatchData(rawMatch);
   console.log(`\n📋 Match: ${matchData.home_team} vs ${matchData.away_team}`);
   console.log(`   Status: ${matchData.status}`);
   console.log(`   Score: ${matchData.score.home} - ${matchData.score.away}`);
   console.log(`   Competition: ${matchData.competition}\n`);
   
-  // Skip if match data is invalid
-  if (matchData.home_team === "Unknown Home" || matchData.away_team === "Unknown Away") {
-    console.log("⚠️ Could not parse match data properly. Check SportDB response structure.");
-    console.log("Raw match data:", JSON.stringify(rawMatch, null, 2).slice(0, 2000));
+  if (matchData.home_team === "Unknown" || matchData.away_team === "Unknown") {
+    console.log("⚠️ Could not parse match data properly.");
     return;
   }
   
-  // Check for duplicate
-  if (isDuplicate(matchData)) {
-    console.log("⚠️ Duplicate match detected. Skipping.");
-    return;
-  }
-  
-  // Determine content type
   const contentType = determineContentType(matchData.status);
   console.log(`📝 Content type: ${contentType}\n`);
   
-  // Generate post with Gemini
   const geminiResponse = await generatePostWithGemini(contentType, matchData);
   console.log("✅ Post generated successfully\n");
   
-  // Build final message
   const message = buildFacebookMessage(geminiResponse);
   console.log("--- POST PREVIEW ---");
   console.log(message);
   console.log("--- END PREVIEW ---\n");
   
-  // Post to Facebook
   const fbResult = await postToFacebook(message);
   console.log("✅ Posted to Facebook successfully!");
   console.log(`   Post ID: ${fbResult.id}`);
 }
 
-// Run
 main().catch((error) => {
   console.error("❌ Error:", error.message);
   process.exit(1);
