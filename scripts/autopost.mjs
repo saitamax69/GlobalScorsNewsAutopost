@@ -70,7 +70,16 @@ async function fetchLiveMatches() {
   }
   
   const data = await res.json();
-  return Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
+  
+  // Debug: Log the structure of the first match
+  const matches = Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
+  if (matches.length > 0) {
+    console.log("\n🔍 DEBUG - First match structure:");
+    console.log(JSON.stringify(matches[0], null, 2).slice(0, 1000));
+    console.log("\n");
+  }
+  
+  return matches;
 }
 
 async function fetchTodayMatches() {
@@ -114,92 +123,147 @@ function pickBestMatch(matches) {
   }
   
   // Priority: LIVE > HT > FT > NS (upcoming)
-  const getStatus = (m) => (m.status || m.state || "").toUpperCase();
+  const getStatus = (m) => {
+    const status = m.status || m.state || m.STATUS || m.matchStatus || "";
+    return status.toString().toUpperCase();
+  };
+  
+  // Find live match (with valid team names)
+  const hasValidTeams = (m) => {
+    const home = m.HOME_NAME || m.homeName || m.home_name || m.homeTeam?.name || m.home?.name || "";
+    const away = m.AWAY_NAME || m.awayName || m.away_name || m.awayTeam?.name || m.away?.name || "";
+    return home.length > 0 && away.length > 0;
+  };
+  
+  const validMatches = matches.filter(hasValidTeams);
+  console.log(`Found ${validMatches.length} matches with valid team names`);
+  
+  if (validMatches.length === 0) {
+    // Return first match anyway for debugging
+    return matches[0];
+  }
   
   // Find live match
-  const live = matches.find(m => getStatus(m) === "LIVE" || getStatus(m) === "1H" || getStatus(m) === "2H");
+  const live = validMatches.find(m => {
+    const s = getStatus(m);
+    return s === "LIVE" || s === "1H" || s === "2H" || s.includes("LIVE");
+  });
   if (live) {
     console.log("🔴 Selected LIVE match");
     return live;
   }
   
   // Find half-time match
-  const ht = matches.find(m => getStatus(m) === "HT");
+  const ht = validMatches.find(m => getStatus(m) === "HT" || getStatus(m) === "HALFTIME");
   if (ht) {
     console.log("⏸️ Selected HT match");
     return ht;
   }
   
   // Find finished match
-  const ft = matches.find(m => getStatus(m) === "FT" || getStatus(m) === "FINISHED");
+  const ft = validMatches.find(m => {
+    const s = getStatus(m);
+    return s === "FT" || s === "FINISHED" || s === "ENDED" || s === "AET";
+  });
   if (ft) {
     console.log("✅ Selected FT match");
     return ft;
   }
   
   // Find upcoming match
-  const ns = matches.find(m => getStatus(m) === "NS" || getStatus(m) === "SCHEDULED");
+  const ns = validMatches.find(m => {
+    const s = getStatus(m);
+    return s === "NS" || s === "SCHEDULED" || s === "NOTSTARTED" || s === "";
+  });
   if (ns) {
     console.log("📅 Selected upcoming match");
     return ns;
   }
   
-  // Return first match as fallback
-  console.log("📌 Selected first available match");
-  return matches[0];
+  // Return first valid match as fallback
+  console.log("📌 Selected first valid match");
+  return validMatches[0];
 }
 
 function transformToMatchData(raw) {
-  // Adapt this mapping based on actual SportDB response structure
-  const getTeamName = (team) => {
-    if (typeof team === "string") return team;
-    return team?.name || team?.teamName || team?.team_name || "Unknown";
+  // Try multiple possible field names (SportDB might use different formats)
+  const getTeamName = (raw, type) => {
+    if (type === "home") {
+      return raw.HOME_NAME || 
+             raw.homeName || 
+             raw.home_name || 
+             raw.homeTeam?.name || 
+             raw.home?.name ||
+             raw.homeTeam ||
+             raw.home ||
+             (typeof raw.HOME === "string" ? raw.HOME : raw.HOME?.name) ||
+             "Unknown Home";
+    } else {
+      return raw.AWAY_NAME || 
+             raw.awayName || 
+             raw.away_name || 
+             raw.awayTeam?.name || 
+             raw.away?.name ||
+             raw.awayTeam ||
+             raw.away ||
+             (typeof raw.AWAY === "string" ? raw.AWAY : raw.AWAY?.name) ||
+             "Unknown Away";
+    }
   };
   
   const getScore = (raw) => {
-    if (raw.score) {
-      if (typeof raw.score === "object") {
-        return {
-          home: raw.score.home ?? raw.score.homeScore ?? 0,
-          away: raw.score.away ?? raw.score.awayScore ?? 0
-        };
-      }
-      if (typeof raw.score === "string" && raw.score.includes("-")) {
-        const parts = raw.score.split("-");
-        return { home: parseInt(parts[0]) || 0, away: parseInt(parts[1]) || 0 };
-      }
-    }
+    // Try different score field formats
+    const homeScore = raw.HOME_SCORE ?? raw.homeScore ?? raw.home_score ?? 
+                      raw.score?.home ?? raw.SCORE?.home ?? 
+                      raw.result?.home ?? 0;
+    const awayScore = raw.AWAY_SCORE ?? raw.awayScore ?? raw.away_score ?? 
+                      raw.score?.away ?? raw.SCORE?.away ?? 
+                      raw.result?.away ?? 0;
+    
     return {
-      home: raw.homeScore ?? raw.home_score ?? 0,
-      away: raw.awayScore ?? raw.away_score ?? 0
+      home: parseInt(homeScore) || 0,
+      away: parseInt(awayScore) || 0
     };
   };
   
   const normalizeStatus = (status) => {
-    const s = (status || "").toUpperCase();
-    if (s === "1H" || s === "2H" || s === "LIVE" || s === "INPROGRESS") return "LIVE";
-    if (s === "FINISHED" || s === "ENDED") return "FT";
-    if (s === "HALFTIME") return "HT";
-    if (s === "SCHEDULED" || s === "NOTSTARTED") return "NS";
+    const s = (status || "").toString().toUpperCase();
+    if (s === "1H" || s === "2H" || s === "LIVE" || s === "INPROGRESS" || s.includes("LIVE")) return "LIVE";
+    if (s === "FINISHED" || s === "ENDED" || s === "FT" || s === "AET") return "FT";
+    if (s === "HALFTIME" || s === "HT") return "HT";
+    if (s === "SCHEDULED" || s === "NOTSTARTED" || s === "NS" || s === "") return "NS";
     return s || "NS";
   };
   
+  const getCompetition = (raw) => {
+    return raw.LEAGUE_NAME ||
+           raw.leagueName ||
+           raw.league_name ||
+           raw.competition?.name ||
+           raw.league?.name ||
+           raw.tournament?.name ||
+           raw.competition ||
+           raw.league ||
+           raw.tournament ||
+           "";
+  };
+  
   return {
-    competition: raw.competition?.name || raw.league?.name || raw.league || raw.tournament || "",
-    round: raw.round || raw.matchday || "",
-    home_team: getTeamName(raw.home || raw.homeTeam || raw.home_team),
-    away_team: getTeamName(raw.away || raw.awayTeam || raw.away_team),
-    status: normalizeStatus(raw.status || raw.state),
-    minute: raw.minute ?? raw.time ?? raw.currentMinute ?? null,
+    competition: getCompetition(raw),
+    round: raw.round || raw.matchday || raw.ROUND || "",
+    home_team: getTeamName(raw, "home"),
+    away_team: getTeamName(raw, "away"),
+    status: normalizeStatus(raw.status || raw.state || raw.STATUS || raw.matchStatus),
+    minute: raw.minute ?? raw.time ?? raw.MINUTE ?? raw.currentMinute ?? null,
     score: getScore(raw),
-    scorers: raw.scorers || raw.goals || [],
-    events: raw.events || raw.incidents || [],
-    stats: raw.stats || raw.statistics || {},
+    scorers: raw.scorers || raw.goals || raw.SCORERS || [],
+    events: raw.events || raw.incidents || raw.EVENTS || [],
+    stats: raw.stats || raw.statistics || raw.STATS || {},
     form: raw.form || {},
     h2h: raw.h2h || raw.headToHead || {},
     odds_like: raw.odds || {},
-    venue: raw.venue || raw.stadium || "",
-    kickoff_iso: raw.kickoff_iso || raw.datetime || raw.startTime || raw.date || "",
+    venue: raw.venue || raw.stadium || raw.VENUE || "",
+    kickoff_iso: raw.kickoff_iso || raw.datetime || raw.startTime || raw.date || raw.START_TIME || "",
     notes: raw.notes || ""
   };
 }
@@ -219,7 +283,7 @@ function determineContentType(status) {
 }
 
 // ============================================
-// GEMINI API
+// GEMINI API (FIXED MODEL NAME)
 // ============================================
 
 async function generatePostWithGemini(contentType, matchData) {
@@ -233,59 +297,79 @@ async function generatePostWithGemini(contentType, matchData) {
     match_data: matchData
   };
   
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  // Try different model names
+  const models = [
+    "gemini-2.0-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-flash-001",
+    "gemini-pro"
+  ];
   
-  const requestBody = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: MASTER_INSTRUCTION }]
-      },
-      {
-        role: "user",
-        parts: [{ text: `Generate a ${contentType} post for this match:\n\n${JSON.stringify(input, null, 2)}` }]
+  let lastError = null;
+  
+  for (const model of models) {
+    try {
+      console.log(`   Trying model: ${model}`);
+      
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      
+      const requestBody = {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: MASTER_INSTRUCTION }]
+          },
+          {
+            role: "user",
+            parts: [{ text: `Generate a ${contentType} post for this match:\n\n${JSON.stringify(input, null, 2)}` }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1024
+        }
+      };
+      
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (!res.ok) {
+        const errText = await res.text();
+        console.log(`   Model ${model} failed: ${res.status}`);
+        lastError = new Error(`Gemini API error ${res.status}: ${errText}`);
+        continue;
       }
-    ],
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 1024
+      
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      // Clean up and parse JSON response
+      let cleaned = text.trim();
+      
+      // Remove markdown code fences if present
+      if (cleaned.startsWith("```json")) {
+        cleaned = cleaned.slice(7);
+      } else if (cleaned.startsWith("```")) {
+        cleaned = cleaned.slice(3);
+      }
+      if (cleaned.endsWith("```")) {
+        cleaned = cleaned.slice(0, -3);
+      }
+      cleaned = cleaned.trim();
+      
+      console.log(`   ✅ Model ${model} worked!`);
+      return JSON.parse(cleaned);
+      
+    } catch (error) {
+      lastError = error;
+      continue;
     }
-  };
-  
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(requestBody)
-  });
-  
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API error ${res.status}: ${errText}`);
   }
   
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  
-  // Clean up and parse JSON response
-  let cleaned = text.trim();
-  
-  // Remove markdown code fences if present
-  if (cleaned.startsWith("```json")) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith("```")) {
-    cleaned = cleaned.slice(3);
-  }
-  if (cleaned.endsWith("```")) {
-    cleaned = cleaned.slice(0, -3);
-  }
-  cleaned = cleaned.trim();
-  
-  try {
-    return JSON.parse(cleaned);
-  } catch (parseError) {
-    console.error("Failed to parse Gemini response as JSON:", cleaned);
-    throw new Error("Invalid JSON response from Gemini");
-  }
+  throw lastError || new Error("All Gemini models failed");
 }
 
 // ============================================
@@ -330,7 +414,7 @@ function buildFacebookMessage(geminiResponse) {
 }
 
 // ============================================
-// DUPLICATE POST PREVENTION (Simple)
+// DUPLICATE POST PREVENTION
 // ============================================
 
 let lastPostedMatch = null;
@@ -380,6 +464,13 @@ async function main() {
   console.log(`   Status: ${matchData.status}`);
   console.log(`   Score: ${matchData.score.home} - ${matchData.score.away}`);
   console.log(`   Competition: ${matchData.competition}\n`);
+  
+  // Skip if match data is invalid
+  if (matchData.home_team === "Unknown Home" || matchData.away_team === "Unknown Away") {
+    console.log("⚠️ Could not parse match data properly. Check SportDB response structure.");
+    console.log("Raw match data:", JSON.stringify(rawMatch, null, 2).slice(0, 2000));
+    return;
+  }
   
   // Check for duplicate
   if (isDuplicate(matchData)) {
