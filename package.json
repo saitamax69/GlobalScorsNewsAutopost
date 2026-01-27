@@ -1,8 +1,12 @@
 {
   "name": "global-score-news",
-  "version": "7.0.0",
+  "version": "8.1.0",
   "type": "module",
   "private": true,
-  "scripts": {"start": "node scripts/autopost.mjs"},
-  "engines": {"node": ">=18.0.0"}
+  "scripts": {
+    "start": "node scripts/autopost.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
