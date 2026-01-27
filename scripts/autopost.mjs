@@ -46,201 +46,121 @@ const CONFIG = {
   ],
   
   LEAGUE_FLAGS: {
-    "PREMIER": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "CHAMPIONSHIP": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "FA CUP": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    "EFL": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "CARABAO": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "ENGLAND": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    "LA LIGA": "🇪🇸", "LALIGA": "🇪🇸", "COPA DEL REY": "🇪🇸", "SPAIN": "🇪🇸",
-    "BUNDESLIGA": "🇩🇪", "DFB": "🇩🇪", "GERMANY": "🇩🇪",
-    "SERIE A": "🇮🇹", "COPPA ITALIA": "🇮🇹", "ITALY": "🇮🇹",
-    "LIGUE 1": "🇫🇷", "COUPE DE FRANCE": "🇫🇷", "FRANCE": "🇫🇷",
-    "CHAMPIONS": "🇪🇺", "EUROPA": "🇪🇺", "CONFERENCE": "🇪🇺", "UEFA": "🇪🇺",
-    "EREDIVISIE": "🇳🇱", "NETHERLANDS": "🇳🇱",
-    "PRIMEIRA": "🇵🇹", "PORTUGAL": "🇵🇹",
-    "SUPER LIG": "🇹🇷", "TURKEY": "🇹🇷",
-    "MLS": "🇺🇸", "USA": "🇺🇸",
-    "LIGA MX": "🇲🇽", "MEXICO": "🇲🇽",
-    "BRASILEIRA": "🇧🇷", "BRAZIL": "🇧🇷",
-    "SAUDI": "🇸🇦", "SCOTTISH": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
-    "ARGENTINA": "🇦🇷", "ARGENTINE": "🇦🇷",
-    "WORLD CUP": "🌍", "EURO": "🇪🇺", "COPA AMERICA": "🌎",
-    "AFRICAN": "🌍", "AFCON": "🌍"
+    "PREMIER": "ENG", "CHAMPIONSHIP": "ENG", "FA CUP": "ENG",
+    "EFL": "ENG", "CARABAO": "ENG", "ENGLAND": "ENG",
+    "LA LIGA": "ESP", "LALIGA": "ESP", "COPA DEL REY": "ESP", "SPAIN": "ESP",
+    "BUNDESLIGA": "GER", "DFB": "GER", "GERMANY": "GER",
+    "SERIE A": "ITA", "COPPA ITALIA": "ITA", "ITALY": "ITA",
+    "LIGUE 1": "FRA", "COUPE DE FRANCE": "FRA", "FRANCE": "FRA",
+    "CHAMPIONS": "UEFA", "EUROPA": "UEFA", "CONFERENCE": "UEFA", "UEFA": "UEFA",
+    "EREDIVISIE": "NED", "NETHERLANDS": "NED",
+    "PRIMEIRA": "POR", "PORTUGAL": "POR",
+    "SUPER LIG": "TUR", "TURKEY": "TUR",
+    "MLS": "USA", "USA": "USA",
+    "LIGA MX": "MEX", "MEXICO": "MEX",
+    "BRASILEIRA": "BRA", "BRAZIL": "BRA",
+    "SAUDI": "KSA", "SCOTTISH": "SCO",
+    "ARGENTINA": "ARG", "ARGENTINE": "ARG",
+    "WORLD CUP": "FIFA", "EURO": "UEFA", "COPA AMERICA": "CONMEBOL",
+    "AFRICAN": "CAF", "AFCON": "CAF"
   }
 };
 
 // ============================================
-// CLEAN FORMAT INSTRUCTION
+// SIMPLE CLEAN FORMAT INSTRUCTION
 // ============================================
-const MASTER_INSTRUCTION = `You are the HEAD BETTING ANALYST at "Global Score News". Create a CLEAN, PROFESSIONAL betting guide.
+const MASTER_INSTRUCTION = `You are a professional football betting analyst for "Global Score News". Create a clean betting guide post.
 
-══════════════════════════════════════════════════
-📋 EXACT FORMAT TO FOLLOW (COPY THIS STRUCTURE):
-══════════════════════════════════════════════════
+FORMAT RULES:
+1. Use simple text formatting - NO special unicode characters
+2. Use === for main section dividers
+3. Use --- for sub-dividers
+4. Use * for bullet points
+5. Keep it clean and readable
 
-⚽ 𝗙𝗢𝗢𝗧𝗕𝗔𝗟𝗟 𝗗𝗔𝗜𝗟𝗬 | [Day Date Month Year]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 [X] Matches Today | [Y] Top Picks Inside! 🎯
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STRUCTURE:
 
+FOOTBALL DAILY | [Date]
+===================================
+[X] Matches Today | Top Picks Inside!
+===================================
 
-🔴 𝗟𝗜𝗩𝗘 𝗦𝗖𝗢𝗥𝗘𝗦
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LIVE SCORES
+-----------------------------------
+[League Name]
+* Team A 2-1 Team B (67')
+* Team C 0-0 Team D (45')
 
-[Flag] 𝗟𝗲𝗮𝗴𝘂𝗲 𝗡𝗮𝗺𝗲
-   • Team A 2-1 Team B ⏱️ 67'
-   • Team C 0-0 Team D ⏱️ 45'
+TODAY'S RESULTS
+-----------------------------------
+[League Name]
+* Team A 3-1 Team B - HOME WIN
+* Team C 2-2 Team D - DRAW
 
-[Flag] 𝗟𝗲𝗮𝗴𝘂𝗲 𝗡𝗮𝗺𝗲
-   • Team E 1-0 Team F ⏱️ 32'
+TOP PREDICTIONS
+===================================
 
+[League] - [Time]
+-----------------------------------
+Match: [Home] vs [Away]
+Odds: [H] | [D] | [A]
 
-✅ 𝗧𝗢𝗗𝗔𝗬'𝗦 𝗥𝗘𝗦𝗨𝗟𝗧𝗦
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Stats:
+* Home form: WWDLW
+* Away form: LDWWL
+* H2H: Home won 3 of last 5
+* Avg goals: 2.5
 
-[Flag] 𝗟𝗲𝗮𝗴𝘂𝗲 𝗡𝗮𝗺𝗲
-   • Team A 3-1 Team B ✅
-   • Team C 2-2 Team D 🤝
-   • Team E 0-1 Team F ❌
+PICK: [Specific bet]
+ODDS: @[odds]
+RISK: Low/Medium/High
 
-[Flag] 𝗟𝗲𝗮𝗴𝘂𝗲 𝗡𝗮𝗺𝗲
-   • Team G 2-0 Team H ✅
+Analysis: [2-3 sentences why]
 
+-----------------------------------
 
-🎯 𝗧𝗢𝗣 𝗣𝗥𝗘𝗗𝗜𝗖𝗧𝗜𝗢𝗡𝗦
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[Repeat for 5-8 predictions]
 
-┌─────────────────────────────┐
-│ [Flag] 𝗟𝗲𝗮𝗴𝘂𝗲 • Time         │
-└─────────────────────────────┘
+ACCUMULATOR OF THE DAY
+===================================
+5-Fold @ [odds]:
+1. Match -> Pick @odds
+2. Match -> Pick @odds
+3. Match -> Pick @odds
+4. Match -> Pick @odds
+5. Match -> Pick @odds
 
-⚽ 𝗛𝗼𝗺𝗲 𝗧𝗲𝗮𝗺 𝘃𝘀 𝗔𝘄𝗮𝘆 𝗧𝗲𝗮𝗺
+10 pounds returns [amount]
 
-   📊 Odds: 1.75 │ 3.50 │ 4.20
+VALUE BETS
+-----------------------------------
+SAFE: [Match] -> [Pick] @[odds]
+VALUE: [Match] -> [Pick] @[odds]
+LONGSHOT: [Match] -> [Pick] @[odds]
 
-   📈 𝗦𝘁𝗮𝘁𝘀:
-   ├ Home form: W3 D1 L1
-   ├ Away form: W2 D2 L1  
-   ├ H2H: Home 3 wins in last 5
-   └ Avg goals: 2.6 per game
+===================================
+WANT MORE WINNERS?
+===================================
 
-   🔮 𝗣𝗶𝗰𝗸: Home Win & Over 1.5
-   💰 𝗢𝗱𝗱𝘀: @1.90
-   ⚠️ 𝗥𝗶𝘀𝗸: ⭐⭐ Medium
+Join 5000+ members getting FREE tips!
 
-   💡 Home team dominant at home with
-   4 wins in last 5. Away team struggling
-   on the road. Expect comfortable win.
+- Full match analysis
+- Live alerts
+- Daily accumulators
+- VIP picks
 
-─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+JOIN FREE: https://t.me/+9uDCOJXm_R1hMzM0
 
-┌─────────────────────────────┐
-│ [Flag] 𝗟𝗲𝗮𝗴𝘂𝗲 • Time         │
-└─────────────────────────────┘
+18+ Gamble Responsibly
 
-[REPEAT FOR EACH PREDICTION - 5 to 8 total]
+===================================
 
-─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+ONLY use TOP LEAGUES: Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Champions League, Europa League.
 
+Skip small leagues like: Bahrain, Sudan, U17, U21, Women's minor leagues.
 
-🔥 𝗔𝗖𝗖𝗨𝗠𝗨𝗟𝗔𝗧𝗢𝗥 𝗢𝗙 𝗧𝗛𝗘 𝗗𝗔𝗬
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-5-Fold @ 12.50 odds:
-
-   1️⃣ Match 1 
-      → Pick @Odds ✅
-
-   2️⃣ Match 2 
-      → Pick @Odds ✅
-
-   3️⃣ Match 3 
-      → Pick @Odds ✅
-
-   4️⃣ Match 4 
-      → Pick @Odds ✅
-
-   5️⃣ Match 5 
-      → Pick @Odds ✅
-
-   💰 £10 → Returns £125.00
-
-
-📈 𝗩𝗔𝗟𝗨𝗘 𝗕𝗘𝗧𝗦
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-   🟢 𝗦𝗔𝗙𝗘: Match → Pick @Odds
-
-   🟡 𝗩𝗔𝗟𝗨𝗘: Match → Pick @Odds
-
-   🔴 𝗟𝗢𝗡𝗚𝗦𝗛𝗢𝗧: Match → Pick @Odds
-
-
-💰 𝗪𝗔𝗡𝗧 𝗠𝗢𝗥𝗘 𝗪𝗜𝗡𝗡𝗘𝗥𝗦?
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Join 5,000+ members getting FREE tips!
-
-   ✅ Full match analysis
-   ✅ Live in-play alerts
-   ✅ Daily accumulators
-   ✅ VIP exclusive picks
-
-👉 𝗝𝗢𝗜𝗡 𝗙𝗥𝗘𝗘: https://t.me/+9uDCOJXm_R1hMzM0
-
-⚠️ 18+ | Gamble Responsibly
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-#GlobalScoreNews #Football #BettingTips #FreeTips #Predictions
-
-══════════════════════════════════════════════════
-📝 CRITICAL FORMATTING RULES:
-══════════════════════════════════════════════════
-
-1. USE THESE EXACT LINE SEPARATORS:
-   • Main sections: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   • Between predictions: ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
-   • Box top: ┌─────────────────────────────┐
-   • Box bottom: └─────────────────────────────┘
-
-2. INDENTATION:
-   • Use 3 spaces before bullet points
-   • Use │ for odds separator (not |)
-   • Use ├ and └ for stats list
-
-3. UNICODE BOLD for headers:
-   𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭
-   𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇
-
-4. EMOJIS TO USE:
-   • Results: ✅ (home win) 🤝 (draw) ❌ (away win)
-   • Sections: 🔴 🎯 ✅ 🔥 📈 💰
-   • Stats: 📊 📈 🔮 💡 ⚠️
-   • Value: 🟢 🟡 🔴
-
-5. ONLY USE TOP LEAGUES for predictions:
-   Premier League, La Liga, Bundesliga, Serie A, Ligue 1,
-   Champions League, Europa League
-
-6. SKIP minor leagues like:
-   Bahrain, Mauritania, Barbados, Sudan, U17, U21, Women's lower leagues
-
-7. EACH PREDICTION MUST HAVE:
-   • Odds for all 3 outcomes
-   • 4 stats with ├ └ format
-   • Specific pick (not just "Home Win")
-   • Risk rating with stars
-   • 3-4 line analysis
-
-8. KEEP IT CLEAN:
-   • Empty line between sections
-   • Consistent spacing
-   • No messy text
-   • Professional look
-
-OUTPUT FORMAT (JSON only, no code blocks):
-{
-  "post_text": "<complete formatted post>",
-  "hashtags": ["#GlobalScoreNews", "#Football", "#BettingTips", "#FreeTips", "#Predictions"]
-}`;
+Return your response as JSON with this exact structure:
+{"post_text": "your complete post here", "hashtags": ["#GlobalScoreNews", "#Football", "#BettingTips"]}`;
 
 // ============================================
 // HELPERS
@@ -258,17 +178,12 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function getRandomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 function getTodayFormatted() {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const now = new Date();
   const day = now.getDate();
-  const suffix = ['th', 'st', 'nd', 'rd'][(day % 10 > 3 || [11,12,13].includes(day % 100)) ? 0 : day % 10];
-  return `${days[now.getDay()]} ${day}${suffix} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  return `${days[now.getDay()]} ${day} ${months[now.getMonth()]} ${now.getFullYear()}`;
 }
 
 function formatKickoffTime(timestamp) {
@@ -276,19 +191,19 @@ function formatKickoffTime(timestamp) {
   try {
     const date = new Date(timestamp);
     if (isNaN(date.getTime())) return null;
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   } catch {
     return null;
   }
 }
 
-function getLeagueFlag(leagueName) {
-  if (!leagueName) return "⚽";
+function getLeagueCode(leagueName) {
+  if (!leagueName) return "";
   const upper = leagueName.toUpperCase();
-  for (const [key, flag] of Object.entries(CONFIG.LEAGUE_FLAGS)) {
-    if (upper.includes(key)) return flag;
+  for (const [key, code] of Object.entries(CONFIG.LEAGUE_FLAGS)) {
+    if (upper.includes(key)) return code;
   }
-  return "⚽";
+  return "";
 }
 
 function formatOdds(odds) {
@@ -308,7 +223,6 @@ function isTopLeague(leagueName) {
   if (!leagueName) return false;
   const upper = leagueName.toUpperCase();
   
-  // Exclude youth, women's minor, and small country leagues
   const excludePatterns = [
     "U17", "U18", "U19", "U20", "U21", "U23",
     "YOUTH", "RESERVE", "AMATEUR",
@@ -329,6 +243,85 @@ function getLeaguePriority(leagueName) {
   const upper = leagueName.toUpperCase();
   const index = CONFIG.TOP_LEAGUES.findIndex(league => upper.includes(league));
   return index === -1 ? 999 : index;
+}
+
+// ============================================
+// JSON CLEANING FUNCTION (FIXED)
+// ============================================
+
+function cleanAndParseJSON(text) {
+  if (!text) throw new Error("Empty response");
+  
+  let cleaned = text.trim();
+  
+  // Remove markdown code blocks
+  if (cleaned.startsWith("```json")) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith("```")) {
+    cleaned = cleaned.slice(3);
+  }
+  if (cleaned.endsWith("```")) {
+    cleaned = cleaned.slice(0, -3);
+  }
+  cleaned = cleaned.trim();
+  
+  // Find JSON object boundaries
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("No valid JSON object found");
+  }
+  
+  cleaned = cleaned.slice(start, end + 1);
+  
+  // Fix common JSON issues
+  // Replace problematic control characters
+  cleaned = cleaned
+    .replace(/[\x00-\x1F\x7F]/g, ' ')  // Remove control characters
+    .replace(/\r\n/g, '\\n')           // Normalize line endings
+    .replace(/\r/g, '\\n')
+    .replace(/\n/g, '\\n')
+    .replace(/\t/g, ' ')               // Replace tabs
+    .replace(/\\/g, '\\\\')            // Escape backslashes first
+    .replace(/\\\\n/g, '\\n')          // Fix double-escaped newlines
+    .replace(/\\\\"/g, '\\"')          // Fix double-escaped quotes
+    .replace(/(?<!\\)"/g, function(match, offset, string) {
+      // Only escape quotes that aren't already escaped and aren't structural
+      const before = string.slice(Math.max(0, offset - 10), offset);
+      if (before.match(/[{,:\[]\s*$/) || before.match(/:\s*$/)) {
+        return match; // Keep structural quotes
+      }
+      return match;
+    });
+  
+  // Try to parse
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    // Alternative: Extract post_text manually
+    console.log("   Trying manual extraction...");
+    
+    const postMatch = cleaned.match(/"post_text"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"hashtags|"\s*})/);
+    const hashMatch = cleaned.match(/"hashtags"\s*:\s*\[([\s\S]*?)\]/);
+    
+    if (postMatch) {
+      let postText = postMatch[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+      
+      let hashtags = ["#GlobalScoreNews", "#Football", "#BettingTips"];
+      if (hashMatch) {
+        const hashContent = hashMatch[1];
+        hashtags = hashContent.match(/"([^"]+)"/g)?.map(h => h.replace(/"/g, '')) || hashtags;
+      }
+      
+      return { post_text: postText, hashtags };
+    }
+    
+    throw new Error(`JSON parse failed: ${e.message}`);
+  }
 }
 
 // ============================================
@@ -476,7 +469,7 @@ function transformMatch(raw) {
     home_team: raw.homeName || raw.homeFirstName || "Unknown",
     away_team: raw.awayName || raw.awayFirstName || "Unknown",
     competition: league,
-    flag: getLeagueFlag(league),
+    code: getLeagueCode(league),
     status: status,
     minute: (raw.gameTime && raw.gameTime !== "-1") ? raw.gameTime : null,
     kickoff_time: formatKickoffTime(raw.startTime || raw.dateTime || raw.kickoff),
@@ -525,7 +518,7 @@ function groupByLeague(matches) {
   const groups = {};
   for (const m of matches) {
     const key = m.competition || "Other";
-    if (!groups[key]) groups[key] = { name: m.competition, flag: m.flag, matches: [] };
+    if (!groups[key]) groups[key] = { name: m.competition, code: m.code, matches: [] };
     groups[key].matches.push(m);
   }
   return Object.values(groups);
@@ -536,27 +529,22 @@ function groupByLeague(matches) {
 // ============================================
 
 function buildMatchDataString(categories) {
-  let data = `📅 DATE: ${getTodayFormatted()}\n\n`;
+  let data = `DATE: ${getTodayFormatted()}\n\n`;
   
   const total = categories.live.length + categories.finished.length + categories.upcoming.length;
-  data += `📊 TOTAL: ${total} matches\n`;
-  data += `   🔴 Live: ${categories.live.length}\n`;
-  data += `   ✅ Finished: ${categories.finished.length}\n`;
-  data += `   📅 Upcoming: ${categories.upcoming.length}\n\n`;
+  data += `TOTAL: ${total} matches\n`;
+  data += `Live: ${categories.live.length} | Finished: ${categories.finished.length} | Upcoming: ${categories.upcoming.length}\n\n`;
   
   // LIVE - Only top leagues
   const topLive = categories.live.filter(m => m.isTopLeague);
   if (topLive.length > 0) {
-    data += "══════════════════════════════\n";
-    data += "🔴 LIVE MATCHES (TOP LEAGUES)\n";
-    data += "══════════════════════════════\n\n";
-    
+    data += "=== LIVE MATCHES ===\n\n";
     const groups = groupByLeague(topLive);
     for (const g of groups) {
-      data += `${g.flag} ${g.name}\n`;
+      data += `[${g.code}] ${g.name}\n`;
       for (const m of g.matches) {
-        data += `   • ${m.home_team} ${m.score.home}-${m.score.away} ${m.away_team}`;
-        if (m.minute) data += ` (${m.minute}')`;
+        data += `* ${m.home_team} ${m.score.home}-${m.score.away} ${m.away_team}`;
+        if (m.minute) data += ` (${m.minute}min)`;
         data += "\n";
       }
       data += "\n";
@@ -566,16 +554,13 @@ function buildMatchDataString(categories) {
   // FINISHED - Only top leagues
   const topFinished = categories.finished.filter(m => m.isTopLeague);
   if (topFinished.length > 0) {
-    data += "══════════════════════════════\n";
-    data += "✅ RESULTS (TOP LEAGUES)\n";
-    data += "══════════════════════════════\n\n";
-    
+    data += "=== FINISHED MATCHES ===\n\n";
     const groups = groupByLeague(topFinished);
     for (const g of groups) {
-      data += `${g.flag} ${g.name}\n`;
+      data += `[${g.code}] ${g.name}\n`;
       for (const m of g.matches) {
-        const emoji = m.score.home > m.score.away ? "✅" : m.score.home < m.score.away ? "❌" : "🤝";
-        data += `   • ${m.home_team} ${m.score.home}-${m.score.away} ${m.away_team} ${emoji}\n`;
+        const result = m.score.home > m.score.away ? "HOME WIN" : m.score.home < m.score.away ? "AWAY WIN" : "DRAW";
+        data += `* ${m.home_team} ${m.score.home}-${m.score.away} ${m.away_team} - ${result}\n`;
       }
       data += "\n";
     }
@@ -584,23 +569,20 @@ function buildMatchDataString(categories) {
   // UPCOMING - Only top leagues for predictions
   const topUpcoming = categories.upcoming.filter(m => m.isTopLeague).slice(0, 10);
   if (topUpcoming.length > 0) {
-    data += "══════════════════════════════\n";
-    data += "📅 UPCOMING (FOR PREDICTIONS)\n";
-    data += "══════════════════════════════\n\n";
-    
+    data += "=== UPCOMING MATCHES (FOR PREDICTIONS) ===\n\n";
     const groups = groupByLeague(topUpcoming);
     for (const g of groups) {
-      data += `${g.flag} ${g.name}\n`;
-      data += "─────────────────────────────\n";
+      data += `[${g.code}] ${g.name}\n`;
+      data += "---\n";
       
       for (const m of g.matches) {
-        data += `\n⚽ ${m.home_team} vs ${m.away_team}\n`;
-        if (m.kickoff_time) data += `   🕐 ${m.kickoff_time}\n`;
-        data += `   📊 Odds: ${m.odds.home} │ ${m.odds.draw} │ ${m.odds.away}\n`;
-        data += `   📈 ${m.home_team}: ${m.stats.homeForm}\n`;
-        data += `   📈 ${m.away_team}: ${m.stats.awayForm}\n`;
-        data += `   📈 H2H: ${m.stats.h2h}\n`;
-        data += `   📈 Avg: ${m.stats.avgGoals} goals\n`;
+        data += `\nMatch: ${m.home_team} vs ${m.away_team}\n`;
+        if (m.kickoff_time) data += `Time: ${m.kickoff_time}\n`;
+        data += `Odds: ${m.odds.home} | ${m.odds.draw} | ${m.odds.away}\n`;
+        data += `Home form: ${m.stats.homeForm}\n`;
+        data += `Away form: ${m.stats.awayForm}\n`;
+        data += `H2H: ${m.stats.h2h}\n`;
+        data += `Avg goals: ${m.stats.avgGoals}\n`;
       }
       data += "\n";
     }
@@ -614,26 +596,22 @@ function buildMatchDataString(categories) {
 // ============================================
 
 async function generatePost(matchData) {
-  console.log("\n🤖 Generating clean post...");
+  console.log("\n🤖 Generating post...");
   
   const prompt = `${MASTER_INSTRUCTION}
 
-══════════════════════════════════════════════════
-📊 TODAY'S DATA:
-══════════════════════════════════════════════════
+=== TODAY'S DATA ===
 
 ${matchData}
 
-══════════════════════════════════════════════════
+=== END DATA ===
 
-Create a CLEAN, PROFESSIONAL betting post now.
-ONLY use TOP LEAGUES for predictions.
-Follow the EXACT format shown above.
-Use proper line separators and indentation.
+Create a clean, professional betting post. Use simple characters only (no special unicode).
+Return valid JSON: {"post_text": "...", "hashtags": [...]}`;
 
-Return ONLY valid JSON.`;
-
-  const models = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant"];
+  const models = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"];
+  
+  let lastError = null;
   
   for (const model of models) {
     try {
@@ -648,47 +626,53 @@ Return ONLY valid JSON.`;
         body: JSON.stringify({
           model,
           messages: [
-            { role: "system", content: "You are a professional betting analyst. Create clean, well-formatted content. JSON only." },
+            { 
+              role: "system", 
+              content: "You are a professional betting analyst. Create clean posts using simple ASCII characters only. Return valid JSON." 
+            },
             { role: "user", content: prompt }
           ],
-          temperature: 0.8,
+          temperature: 0.7,
           max_tokens: 4000
         })
       });
       
       if (res.status === 429) {
-        console.log("   ⚠️ Rate limit");
+        console.log("   ⚠️ Rate limit, waiting...");
         await delay(10000);
         continue;
       }
       
-      if (!res.ok) continue;
+      if (!res.ok) {
+        console.log(`   ❌ API error: ${res.status}`);
+        continue;
+      }
       
       const data = await res.json();
-      let text = data?.choices?.[0]?.message?.content || "";
+      const text = data?.choices?.[0]?.message?.content || "";
       
-      if (!text) continue;
+      if (!text) {
+        console.log("   ⚠️ Empty response");
+        continue;
+      }
       
-      text = text.trim();
-      if (text.startsWith("```json")) text = text.slice(7);
-      else if (text.startsWith("```")) text = text.slice(3);
-      if (text.endsWith("```")) text = text.slice(0, -3);
-      text = text.trim();
+      console.log("   ✅ Got response, parsing...");
       
-      const start = text.indexOf("{");
-      const end = text.lastIndexOf("}");
-      if (start !== -1 && end !== -1) text = text.slice(start, end + 1);
+      const parsed = cleanAndParseJSON(text);
       
-      console.log("   ✅ Generated!");
-      return JSON.parse(text);
+      if (parsed && parsed.post_text) {
+        console.log("   ✅ Parsed successfully!");
+        return parsed;
+      }
       
     } catch (e) {
       console.log(`   ❌ ${e.message}`);
+      lastError = e;
       continue;
     }
   }
   
-  throw new Error("All models failed");
+  throw lastError || new Error("All models failed");
 }
 
 // ============================================
@@ -696,7 +680,7 @@ Return ONLY valid JSON.`;
 // ============================================
 
 async function postToFacebook(message) {
-  console.log("\n📘 Posting...");
+  console.log("\n📘 Posting to Facebook...");
   
   const res = await fetch(`https://graph.facebook.com/v19.0/${FB_PAGE_ID}/feed`, {
     method: "POST",
@@ -708,7 +692,7 @@ async function postToFacebook(message) {
   
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`FB: ${res.status}`);
+    throw new Error(`Facebook error: ${res.status}`);
   }
   
   console.log("   ✅ Posted!");
@@ -717,10 +701,17 @@ async function postToFacebook(message) {
 
 function buildFinalMessage(response) {
   let msg = response.post_text || "";
-  msg = msg.replace(/t\.me\/\+[\w-]+/g, "t.me/+9uDCOJXm_R1hMzM0");
+  
+  // Ensure Telegram link
+  if (!msg.includes("t.me/+9uDCOJXm_R1hMzM0")) {
+    msg = msg.replace(/t\.me\/\+[\w-]+/g, "t.me/+9uDCOJXm_R1hMzM0");
+  }
+  
+  // Add hashtags if not present
   if (response.hashtags && !msg.includes("#GlobalScoreNews")) {
     msg += "\n\n" + response.hashtags.join(" ");
   }
+  
   return msg.trim();
 }
 
@@ -729,53 +720,63 @@ function buildFinalMessage(response) {
 // ============================================
 
 async function main() {
-  console.log("═".repeat(50));
-  console.log("⚽ GLOBAL SCORE NEWS v7.0 - Clean Format");
-  console.log("═".repeat(50));
+  console.log("=".repeat(50));
+  console.log("GLOBAL SCORE NEWS v7.1 - Fixed JSON Parsing");
+  console.log("=".repeat(50));
   
   assertEnv();
   
   const history = loadHistory();
   
   if (!FORCE_POST && !shouldPostNow(history)) {
-    console.log("\n👋 Skip");
+    console.log("\n👋 Skipping this run");
     return;
   }
   
-  if (FORCE_POST) console.log("\n⚡ FORCE");
+  if (FORCE_POST) console.log("\n⚡ FORCE POST MODE");
   
   const raw = await fetchAllMatches();
-  if (!raw?.length) { console.log("⚠️ No matches"); return; }
+  if (!raw?.length) { 
+    console.log("⚠️ No matches found"); 
+    return; 
+  }
   
   const cats = processMatches(raw);
   const total = cats.live.length + cats.finished.length + cats.upcoming.length;
   
-  console.log(`\n📊 ${total} total | ${cats.live.length} live | ${cats.finished.length} FT | ${cats.upcoming.length} upcoming`);
+  console.log(`\n📊 Processed: ${total} matches`);
+  console.log(`   Live: ${cats.live.length} | FT: ${cats.finished.length} | Upcoming: ${cats.upcoming.length}`);
   
   const topTotal = cats.live.filter(m => m.isTopLeague).length +
                    cats.finished.filter(m => m.isTopLeague).length +
                    cats.upcoming.filter(m => m.isTopLeague).length;
   
-  console.log(`   🏆 Top leagues: ${topTotal}`);
+  console.log(`   Top leagues: ${topTotal}`);
   
-  if (topTotal < 3) { console.log("⚠️ Not enough top matches"); return; }
+  if (topTotal < 3) { 
+    console.log("⚠️ Not enough top league matches"); 
+    return; 
+  }
   
   const matchData = buildMatchDataString(cats);
   const response = await generatePost(matchData);
   const final = buildFinalMessage(response);
   
-  console.log("\n" + "═".repeat(50));
+  console.log("\n" + "=".repeat(50));
+  console.log("POST PREVIEW:");
+  console.log("=".repeat(50));
   console.log(final);
-  console.log("═".repeat(50));
-  console.log(`📏 ${final.length} chars`);
+  console.log("=".repeat(50));
+  console.log(`Length: ${final.length} characters`);
   
   const result = await postToFacebook(final);
   recordPost(history, total);
   
-  console.log(`\n✅ Done! ID: ${result.id}`);
+  console.log(`\n✅ SUCCESS! Post ID: ${result.id}`);
+  console.log(`   Today's posts: ${getTodayCount(history)}`);
 }
 
 main().catch(e => {
-  console.error("❌", e.message);
+  console.error("\n❌ ERROR:", e.message);
   process.exit(1);
 });
