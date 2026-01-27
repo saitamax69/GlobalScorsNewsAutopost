@@ -54,7 +54,6 @@ function assertEnv() {
   console.log("✅ All environment variables present");
 }
 
-// Simple delay function for rate limiting
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -122,7 +121,6 @@ function pickBestMatch(matches) {
     return null;
   }
   
-  // Filter matches with valid team names
   const hasValidTeams = (m) => {
     const home = m.homeName || m.homeFirstName || "";
     const away = m.awayName || m.awayFirstName || "";
@@ -136,7 +134,7 @@ function pickBestMatch(matches) {
     return matches[0];
   }
   
-  // Priority 1: LIVE matches (1ST HALF, 2ND HALF)
+  // Priority 1: LIVE matches
   const live = validMatches.find(m => {
     const s = getMatchStatus(m);
     return s === "LIVE" || s === "1ST HALF" || s === "2ND HALF" || 
@@ -160,19 +158,19 @@ function pickBestMatch(matches) {
   // Priority 3: FINISHED matches
   const ft = validMatches.find(m => {
     const s = getMatchStatus(m);
-    return s === "FINISHED" || s === "FT" || s === "ENDED" || s === "AET" || s === "AFTER ET";
+    return s === "FINISHED" || s === "FT" || s === "ENDED" || s === "AET";
   });
   if (ft) {
     console.log("✅ Selected FT match");
     return ft;
   }
   
-  // Priority 4: Upcoming matches - try to find a bigger league
+  // Priority 4: Big league matches
   const bigLeagues = ["PREMIER LEAGUE", "LA LIGA", "BUNDESLIGA", "SERIE A", "LIGUE 1", 
-                      "CHAMPIONS LEAGUE", "EUROPA LEAGUE", "WORLD CUP", "EURO"];
+                      "CHAMPIONS LEAGUE", "EUROPA LEAGUE"];
   
   const bigLeagueMatch = validMatches.find(m => {
-    const league = (m.leagueName || m.tournamentName || m.competition || "").toUpperCase();
+    const league = (m.leagueName || m.tournamentName || "").toUpperCase();
     return bigLeagues.some(bl => league.includes(bl));
   });
   
@@ -181,7 +179,6 @@ function pickBestMatch(matches) {
     return bigLeagueMatch;
   }
   
-  // Return first valid match
   console.log("📌 Selected first valid match");
   return validMatches[0];
 }
@@ -221,20 +218,15 @@ function transformToMatchData(raw) {
 
 function determineContentType(status) {
   switch (status) {
-    case "LIVE":
-      return "live_update";
-    case "HT":
-      return "half_time";
-    case "FT":
-      return "full_time";
-    case "NS":
-    default:
-      return "preview";
+    case "LIVE": return "live_update";
+    case "HT": return "half_time";
+    case "FT": return "full_time";
+    default: return "preview";
   }
 }
 
 // ============================================
-// GEMINI API (FIXED WITH RETRY)
+// GEMINI API - FIXED MODEL NAMES
 // ============================================
 
 async function generatePostWithGemini(contentType, matchData) {
@@ -247,30 +239,40 @@ async function generatePostWithGemini(contentType, matchData) {
     language: "en",
     match_data: matchData
   };
-  
-  // Updated model list with correct names
-  const models = [
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-flash"
+
+  // Correct model configurations
+  const modelConfigs = [
+    { 
+      model: "gemini-2.0-flash", 
+      apiVersion: "v1beta" 
+    },
+    { 
+      model: "gemini-1.5-flash", 
+      apiVersion: "v1beta" 
+    },
+    { 
+      model: "gemini-1.5-pro", 
+      apiVersion: "v1beta" 
+    }
   ];
   
   const maxRetries = 3;
   let lastError = null;
   
-  for (const model of models) {
+  for (const config of modelConfigs) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`   Trying model: ${model} (attempt ${attempt}/${maxRetries})`);
+        console.log(`   Trying ${config.model} (${config.apiVersion}) - attempt ${attempt}/${maxRetries}`);
         
-        // Use v1 instead of v1beta
-        const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        const url = `https://generativelanguage.googleapis.com/${config.apiVersion}/models/${config.model}:generateContent?key=${GEMINI_API_KEY}`;
         
         const requestBody = {
           contents: [
             {
               parts: [
-                { text: MASTER_INSTRUCTION },
-                { text: `Generate a ${contentType} post for this match:\n\n${JSON.stringify(input, null, 2)}` }
+                { 
+                  text: `${MASTER_INSTRUCTION}\n\nGenerate a ${contentType} post for this match:\n\n${JSON.stringify(input, null, 2)}` 
+                }
               ]
             }
           ],
@@ -286,15 +288,17 @@ async function generatePostWithGemini(contentType, matchData) {
           body: JSON.stringify(requestBody)
         });
         
+        // Handle rate limiting
         if (res.status === 429) {
-          console.log(`   ⚠️ Rate limited. Waiting 10 seconds...`);
-          await delay(10000);
+          console.log(`   ⚠️ Rate limited. Waiting 15 seconds...`);
+          await delay(15000);
           continue;
         }
         
+        // Handle other errors
         if (!res.ok) {
           const errText = await res.text();
-          console.log(`   Model ${model} failed: ${res.status}`);
+          console.log(`   ❌ ${config.model} failed: ${res.status}`);
           lastError = new Error(`Gemini API error ${res.status}: ${errText}`);
           break; // Try next model
         }
@@ -302,26 +306,28 @@ async function generatePostWithGemini(contentType, matchData) {
         const data = await res.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
         
-        // Clean up and parse JSON response
-        let cleaned = text.trim();
+        if (!text) {
+          console.log(`   ⚠️ Empty response, retrying...`);
+          await delay(3000);
+          continue;
+        }
         
-        if (cleaned.startsWith("```json")) {
-          cleaned = cleaned.slice(7);
-        } else if (cleaned.startsWith("```")) {
-          cleaned = cleaned.slice(3);
-        }
-        if (cleaned.endsWith("```")) {
-          cleaned = cleaned.slice(0, -3);
-        }
+        // Clean up JSON response
+        let cleaned = text.trim();
+        if (cleaned.startsWith("```json")) cleaned = cleaned.slice(7);
+        else if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
+        if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
         cleaned = cleaned.trim();
         
-        console.log(`   ✅ Model ${model} worked!`);
-        return JSON.parse(cleaned);
+        const parsed = JSON.parse(cleaned);
+        console.log(`   ✅ Success with ${config.model}!`);
+        return parsed;
         
       } catch (error) {
+        console.log(`   ⚠️ Error: ${error.message}`);
         lastError = error;
         if (attempt < maxRetries) {
-          console.log(`   Retrying in 5 seconds...`);
+          console.log(`   Waiting 5 seconds before retry...`);
           await delay(5000);
         }
       }
@@ -366,8 +372,7 @@ function buildFacebookMessage(geminiResponse) {
     return postText;
   }
   
-  const hashtagsText = hashtags.join(" ");
-  return `${postText}\n\n${hashtagsText}`.trim();
+  return `${postText}\n\n${hashtags.join(" ")}`.trim();
 }
 
 // ============================================
