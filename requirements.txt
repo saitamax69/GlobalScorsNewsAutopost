@@ -1,4 +1,0 @@
-requests
-facebook-sdk
-google-generativeai
-pyTelegramBotAPI
