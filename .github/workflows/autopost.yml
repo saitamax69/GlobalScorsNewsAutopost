@@ -2,13 +2,11 @@ name: Global Score News Autopost
 
 on:
   schedule:
-    # Runs every 30 minutes to check if it should post
-    # The script itself decides randomly whether to post
     - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
       force_post:
-        description: 'Force a post regardless of random check'
+        description: 'Force post'
         required: false
         default: 'false'
         type: choice
@@ -32,7 +30,6 @@ jobs:
           node-version: "20"
 
       - name: Run autopost script
-        id: autopost
         run: node scripts/autopost.mjs
         env:
           SPORTDB_API_KEY: ${{ secrets.SPORTDB_API_KEY }}
@@ -41,7 +38,7 @@ jobs:
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
           FORCE_POST: ${{ github.event.inputs.force_post }}
 
-      - name: Commit posted.json if changed
+      - name: Commit changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
