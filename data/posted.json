@@ -1,1 +1,12 @@
-{"posts":[],"dailyCount":{},"lastPost":null}
+{
+  "posts": [
+    {
+      "postedAt": "2026-01-27T21:23:07.491Z",
+      "count": 37
+    }
+  ],
+  "dailyCount": {
+    "2026-01-27": 1
+  },
+  "lastPost": "2026-01-27T21:23:07.491Z"
+}
