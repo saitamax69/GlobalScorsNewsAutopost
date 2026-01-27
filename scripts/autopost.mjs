@@ -32,135 +32,39 @@ const CONFIG = {
   PAGE_NAME: "Global Score News",
   TELEGRAM_URL: "https://t.me/+9uDCOJXm_R1hMzM0",
   
-  MIN_PREDICTIONS: 5,
-  MAX_PREDICTIONS: 8,
-  
   TOP_LEAGUES: [
     "PREMIER LEAGUE", "CHAMPIONS LEAGUE", "LA LIGA", "LALIGA",
     "BUNDESLIGA", "SERIE A", "LIGUE 1", "EUROPA LEAGUE",
-    "CONFERENCE LEAGUE", "FA CUP", "COPA DEL REY", "DFB POKAL",
-    "COPPA ITALIA", "COUPE DE FRANCE", "CARABAO CUP", "EFL CUP",
-    "WORLD CUP", "EURO", "COPA AMERICA", "NATIONS LEAGUE",
-    "SAUDI PRO", "MLS", "EREDIVISIE", "PRIMEIRA LIGA",
-    "SUPER LIG", "BRASILEIRAO", "CHAMPIONSHIP", "LIGA MX"
+    "FA CUP", "COPA DEL REY", "DFB POKAL", "COPPA ITALIA",
+    "CARABAO CUP", "SAUDI PRO", "MLS", "EREDIVISIE",
+    "CHAMPIONSHIP", "LIGA MX", "BRASILEIRAO"
   ],
   
   LEAGUE_FLAGS: {
-    "PREMIER": "ENG", "CHAMPIONSHIP": "ENG", "FA CUP": "ENG",
-    "EFL": "ENG", "CARABAO": "ENG", "ENGLAND": "ENG",
-    "LA LIGA": "ESP", "LALIGA": "ESP", "COPA DEL REY": "ESP", "SPAIN": "ESP",
-    "BUNDESLIGA": "GER", "DFB": "GER", "GERMANY": "GER",
-    "SERIE A": "ITA", "COPPA ITALIA": "ITA", "ITALY": "ITA",
-    "LIGUE 1": "FRA", "COUPE DE FRANCE": "FRA", "FRANCE": "FRA",
-    "CHAMPIONS": "UEFA", "EUROPA": "UEFA", "CONFERENCE": "UEFA", "UEFA": "UEFA",
-    "EREDIVISIE": "NED", "NETHERLANDS": "NED",
-    "PRIMEIRA": "POR", "PORTUGAL": "POR",
-    "SUPER LIG": "TUR", "TURKEY": "TUR",
-    "MLS": "USA", "USA": "USA",
-    "LIGA MX": "MEX", "MEXICO": "MEX",
-    "BRASILEIRA": "BRA", "BRAZIL": "BRA",
-    "SAUDI": "KSA", "SCOTTISH": "SCO",
-    "ARGENTINA": "ARG", "ARGENTINE": "ARG",
-    "WORLD CUP": "FIFA", "EURO": "UEFA", "COPA AMERICA": "CONMEBOL",
-    "AFRICAN": "CAF", "AFCON": "CAF"
+    "PREMIER": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "CHAMPIONSHIP": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "FA CUP": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "ENGLAND": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "LA LIGA": "🇪🇸",
+    "LALIGA": "🇪🇸",
+    "SPAIN": "🇪🇸",
+    "BUNDESLIGA": "🇩🇪",
+    "GERMANY": "🇩🇪",
+    "SERIE A": "🇮🇹",
+    "ITALY": "🇮🇹",
+    "LIGUE 1": "🇫🇷",
+    "FRANCE": "🇫🇷",
+    "CHAMPIONS": "🇪🇺",
+    "EUROPA": "🇪🇺",
+    "EREDIVISIE": "🇳🇱",
+    "MLS": "🇺🇸",
+    "LIGA MX": "🇲🇽",
+    "BRAZIL": "🇧🇷",
+    "SAUDI": "🇸🇦",
+    "SCOTLAND": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    "ARGENTINA": "🇦🇷"
   }
 };
-
-// ============================================
-// SIMPLE CLEAN FORMAT INSTRUCTION
-// ============================================
-const MASTER_INSTRUCTION = `You are a professional football betting analyst for "Global Score News". Create a clean betting guide post.
-
-FORMAT RULES:
-1. Use simple text formatting - NO special unicode characters
-2. Use === for main section dividers
-3. Use --- for sub-dividers
-4. Use * for bullet points
-5. Keep it clean and readable
-
-STRUCTURE:
-
-FOOTBALL DAILY | [Date]
-===================================
-[X] Matches Today | Top Picks Inside!
-===================================
-
-LIVE SCORES
------------------------------------
-[League Name]
-* Team A 2-1 Team B (67')
-* Team C 0-0 Team D (45')
-
-TODAY'S RESULTS
------------------------------------
-[League Name]
-* Team A 3-1 Team B - HOME WIN
-* Team C 2-2 Team D - DRAW
-
-TOP PREDICTIONS
-===================================
-
-[League] - [Time]
------------------------------------
-Match: [Home] vs [Away]
-Odds: [H] | [D] | [A]
-
-Stats:
-* Home form: WWDLW
-* Away form: LDWWL
-* H2H: Home won 3 of last 5
-* Avg goals: 2.5
-
-PICK: [Specific bet]
-ODDS: @[odds]
-RISK: Low/Medium/High
-
-Analysis: [2-3 sentences why]
-
------------------------------------
-
-[Repeat for 5-8 predictions]
-
-ACCUMULATOR OF THE DAY
-===================================
-5-Fold @ [odds]:
-1. Match -> Pick @odds
-2. Match -> Pick @odds
-3. Match -> Pick @odds
-4. Match -> Pick @odds
-5. Match -> Pick @odds
-
-10 pounds returns [amount]
-
-VALUE BETS
------------------------------------
-SAFE: [Match] -> [Pick] @[odds]
-VALUE: [Match] -> [Pick] @[odds]
-LONGSHOT: [Match] -> [Pick] @[odds]
-
-===================================
-WANT MORE WINNERS?
-===================================
-
-Join 5000+ members getting FREE tips!
-
-- Full match analysis
-- Live alerts
-- Daily accumulators
-- VIP picks
-
-JOIN FREE: https://t.me/+9uDCOJXm_R1hMzM0
-
-18+ Gamble Responsibly
-
-===================================
-
-ONLY use TOP LEAGUES: Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Champions League, Europa League.
-
-Skip small leagues like: Bahrain, Sudan, U17, U21, Women's minor leagues.
-
-Return your response as JSON with this exact structure:
-{"post_text": "your complete post here", "hashtags": ["#GlobalScoreNews", "#Football", "#BettingTips"]}`;
 
 // ============================================
 // HELPERS
@@ -182,35 +86,23 @@ function getTodayFormatted() {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const now = new Date();
-  const day = now.getDate();
-  return `${days[now.getDay()]} ${day} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  return `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 }
 
-function formatKickoffTime(timestamp) {
-  if (!timestamp) return null;
-  try {
-    const date = new Date(timestamp);
-    if (isNaN(date.getTime())) return null;
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  } catch {
-    return null;
-  }
-}
-
-function getLeagueCode(leagueName) {
-  if (!leagueName) return "";
+function getLeagueFlag(leagueName) {
+  if (!leagueName) return "⚽";
   const upper = leagueName.toUpperCase();
-  for (const [key, code] of Object.entries(CONFIG.LEAGUE_FLAGS)) {
-    if (upper.includes(key)) return code;
+  for (const [key, flag] of Object.entries(CONFIG.LEAGUE_FLAGS)) {
+    if (upper.includes(key)) return flag;
   }
-  return "";
+  return "⚽";
 }
 
 function formatOdds(odds) {
   if (!odds) return null;
-  const home = odds.home || odds["1"] || odds.homeWin || null;
+  const home = odds.home || odds["1"] || null;
   const draw = odds.draw || odds["X"] || null;
-  const away = odds.away || odds["2"] || odds.awayWin || null;
+  const away = odds.away || odds["2"] || null;
   if (!home && !draw && !away) return null;
   return {
     home: home ? parseFloat(home).toFixed(2) : "-",
@@ -223,16 +115,9 @@ function isTopLeague(leagueName) {
   if (!leagueName) return false;
   const upper = leagueName.toUpperCase();
   
-  const excludePatterns = [
-    "U17", "U18", "U19", "U20", "U21", "U23",
-    "YOUTH", "RESERVE", "AMATEUR",
-    "BAHRAIN", "MAURITANIA", "BARBADOS", "SUDAN", "KENYA",
-    "CAMBODIA", "VIETNAM", "LAOS", "MYANMAR",
-    "WOMEN U", "GIRL"
-  ];
-  
-  for (const pattern of excludePatterns) {
-    if (upper.includes(pattern)) return false;
+  const exclude = ["U17", "U18", "U19", "U20", "U21", "U23", "YOUTH", "RESERVE", "WOMEN U", "GIRL"];
+  for (const p of exclude) {
+    if (upper.includes(p)) return false;
   }
   
   return CONFIG.TOP_LEAGUES.some(league => upper.includes(league));
@@ -246,85 +131,6 @@ function getLeaguePriority(leagueName) {
 }
 
 // ============================================
-// JSON CLEANING FUNCTION (FIXED)
-// ============================================
-
-function cleanAndParseJSON(text) {
-  if (!text) throw new Error("Empty response");
-  
-  let cleaned = text.trim();
-  
-  // Remove markdown code blocks
-  if (cleaned.startsWith("```json")) {
-    cleaned = cleaned.slice(7);
-  } else if (cleaned.startsWith("```")) {
-    cleaned = cleaned.slice(3);
-  }
-  if (cleaned.endsWith("```")) {
-    cleaned = cleaned.slice(0, -3);
-  }
-  cleaned = cleaned.trim();
-  
-  // Find JSON object boundaries
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error("No valid JSON object found");
-  }
-  
-  cleaned = cleaned.slice(start, end + 1);
-  
-  // Fix common JSON issues
-  // Replace problematic control characters
-  cleaned = cleaned
-    .replace(/[\x00-\x1F\x7F]/g, ' ')  // Remove control characters
-    .replace(/\r\n/g, '\\n')           // Normalize line endings
-    .replace(/\r/g, '\\n')
-    .replace(/\n/g, '\\n')
-    .replace(/\t/g, ' ')               // Replace tabs
-    .replace(/\\/g, '\\\\')            // Escape backslashes first
-    .replace(/\\\\n/g, '\\n')          // Fix double-escaped newlines
-    .replace(/\\\\"/g, '\\"')          // Fix double-escaped quotes
-    .replace(/(?<!\\)"/g, function(match, offset, string) {
-      // Only escape quotes that aren't already escaped and aren't structural
-      const before = string.slice(Math.max(0, offset - 10), offset);
-      if (before.match(/[{,:\[]\s*$/) || before.match(/:\s*$/)) {
-        return match; // Keep structural quotes
-      }
-      return match;
-    });
-  
-  // Try to parse
-  try {
-    return JSON.parse(cleaned);
-  } catch (e) {
-    // Alternative: Extract post_text manually
-    console.log("   Trying manual extraction...");
-    
-    const postMatch = cleaned.match(/"post_text"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"hashtags|"\s*})/);
-    const hashMatch = cleaned.match(/"hashtags"\s*:\s*\[([\s\S]*?)\]/);
-    
-    if (postMatch) {
-      let postText = postMatch[1]
-        .replace(/\\n/g, '\n')
-        .replace(/\\"/g, '"')
-        .replace(/\\\\/g, '\\');
-      
-      let hashtags = ["#GlobalScoreNews", "#Football", "#BettingTips"];
-      if (hashMatch) {
-        const hashContent = hashMatch[1];
-        hashtags = hashContent.match(/"([^"]+)"/g)?.map(h => h.replace(/"/g, '')) || hashtags;
-      }
-      
-      return { post_text: postText, hashtags };
-    }
-    
-    throw new Error(`JSON parse failed: ${e.message}`);
-  }
-}
-
-// ============================================
 // HISTORY MANAGEMENT
 // ============================================
 
@@ -334,9 +140,7 @@ function ensureDataDir() {
 
 function loadHistory() {
   ensureDataDir();
-  if (!existsSync(POSTED_FILE)) {
-    return { posts: [], dailyCount: {}, lastPost: null };
-  }
+  if (!existsSync(POSTED_FILE)) return { posts: [], dailyCount: {}, lastPost: null };
   try {
     return JSON.parse(readFileSync(POSTED_FILE, 'utf-8'));
   } catch {
@@ -347,12 +151,6 @@ function loadHistory() {
 function saveHistory(history) {
   ensureDataDir();
   if (history.posts.length > 500) history.posts = history.posts.slice(-500);
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 7);
-  const cutoffDate = cutoff.toISOString().split('T')[0];
-  for (const date in history.dailyCount) {
-    if (date < cutoffDate) delete history.dailyCount[date];
-  }
   writeFileSync(POSTED_FILE, JSON.stringify(history, null, 2));
 }
 
@@ -369,9 +167,9 @@ function getHoursSinceLastPost(history) {
   return (new Date() - new Date(history.lastPost)) / (1000 * 60 * 60);
 }
 
-function recordPost(history, matchCount) {
+function recordPost(history, count) {
   const today = getTodayDate();
-  history.posts.push({ postedAt: new Date().toISOString(), matchCount });
+  history.posts.push({ postedAt: new Date().toISOString(), count });
   history.dailyCount[today] = (history.dailyCount[today] || 0) + 1;
   history.lastPost = new Date().toISOString();
   saveHistory(history);
@@ -384,24 +182,20 @@ function recordPost(history, matchCount) {
 function shouldPostNow(history) {
   const hour = new Date().getUTCHours();
   const count = getTodayCount(history);
-  const hoursSince = getHoursSinceLastPost(history);
+  const hours = getHoursSinceLastPost(history);
   
-  const seed = parseInt(getTodayDate().replace(/-/g, ''));
-  const target = CONFIG.MIN_POSTS_PER_DAY + (seed % (CONFIG.MAX_POSTS_PER_DAY - CONFIG.MIN_POSTS_PER_DAY + 1));
+  const target = CONFIG.MIN_POSTS_PER_DAY + (parseInt(getTodayDate().replace(/-/g, '')) % 5);
   
-  console.log(`\n📊 Check: ${count}/${target} posts | ${hoursSince.toFixed(1)}h ago`);
+  console.log(`\n📊 ${count}/${target} posts | ${hours.toFixed(1)}h ago`);
   
-  if (count >= target) { console.log("   ❌ Limit"); return false; }
-  if (hoursSince < CONFIG.MIN_HOURS_BETWEEN_POSTS) { console.log("   ❌ Soon"); return false; }
+  if (count >= target) return false;
+  if (hours < CONFIG.MIN_HOURS_BETWEEN_POSTS) return false;
   
   let chance = CONFIG.BASE_POST_CHANCE;
   if (CONFIG.QUIET_HOURS.includes(hour)) chance *= 0.2;
   else if (CONFIG.PEAK_HOURS.includes(hour)) chance *= 1.5;
   
-  const roll = Math.random();
-  console.log(`   🎲 ${(chance*100).toFixed(0)}% | ${roll < chance ? '✅ POST' : '⏭️ SKIP'}`);
-  
-  return roll < chance;
+  return Math.random() < chance;
 }
 
 // ============================================
@@ -410,7 +204,7 @@ function shouldPostNow(history) {
 
 async function fetchAllMatches() {
   console.log("\n📡 Fetching matches...");
-  let allMatches = [];
+  let all = [];
   
   try {
     const res = await fetch("https://api.sportdb.dev/api/flashscore/football/live", {
@@ -418,13 +212,11 @@ async function fetchAllMatches() {
     });
     if (res.ok) {
       const data = await res.json();
-      const matches = Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
-      console.log(`   🔴 Live: ${matches.length}`);
-      allMatches.push(...matches);
+      const m = Array.isArray(data) ? data : (data.matches || data.data || []);
+      console.log(`   🔴 Live: ${m.length}`);
+      all.push(...m);
     }
-  } catch (e) {
-    console.log(`   ⚠️ Live error`);
-  }
+  } catch (e) { }
   
   try {
     const res = await fetch("https://api.sportdb.dev/api/flashscore/football/today", {
@@ -432,247 +224,265 @@ async function fetchAllMatches() {
     });
     if (res.ok) {
       const data = await res.json();
-      const matches = Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
-      console.log(`   📅 Today: ${matches.length}`);
-      for (const m of matches) {
-        const key = `${m.homeName || m.homeFirstName}_${m.awayName || m.awayFirstName}`;
-        const exists = allMatches.some(e => `${e.homeName || e.homeFirstName}_${e.awayName || e.awayFirstName}` === key);
-        if (!exists) allMatches.push(m);
+      const m = Array.isArray(data) ? data : (data.matches || data.data || []);
+      console.log(`   📅 Today: ${m.length}`);
+      for (const match of m) {
+        const key = `${match.homeName}_${match.awayName}`;
+        if (!all.some(e => `${e.homeName}_${e.awayName}` === key)) {
+          all.push(match);
+        }
       }
     }
-  } catch (e) {
-    console.log(`   ⚠️ Today error`);
-  }
+  } catch (e) { }
   
-  console.log(`   📊 Total: ${allMatches.length}`);
-  return allMatches;
+  console.log(`   📊 Total: ${all.length}`);
+  return all;
 }
 
 // ============================================
 // MATCH PROCESSING
 // ============================================
 
-function getMatchStatus(m) {
-  const status = (m.eventStage || m.status || "").toUpperCase();
-  if (status.includes("1ST") || status.includes("2ND") || status === "LIVE" || status === "1H" || status === "2H") return "LIVE";
-  if (status.includes("HT") || status === "HALFTIME") return "HT";
-  if (["FINISHED", "ENDED", "FT", "AET", "AP", "PEN"].includes(status)) return "FT";
-  if (status.includes("POSTPONED") || status.includes("CANCELLED")) return "CANCELLED";
+function getStatus(m) {
+  const s = (m.eventStage || m.status || "").toUpperCase();
+  if (s.includes("1ST") || s.includes("2ND") || s === "LIVE" || s === "1H" || s === "2H") return "LIVE";
+  if (s.includes("HT")) return "HT";
+  if (["FINISHED", "FT", "AET", "PEN"].includes(s)) return "FT";
   return "NS";
 }
 
-function transformMatch(raw) {
-  const status = getMatchStatus(raw);
+function transform(raw) {
   const league = raw.leagueName || raw.tournamentName || "";
-  
   return {
-    home_team: raw.homeName || raw.homeFirstName || "Unknown",
-    away_team: raw.awayName || raw.awayFirstName || "Unknown",
-    competition: league,
-    code: getLeagueCode(league),
-    status: status,
-    minute: (raw.gameTime && raw.gameTime !== "-1") ? raw.gameTime : null,
-    kickoff_time: formatKickoffTime(raw.startTime || raw.dateTime || raw.kickoff),
-    score: {
-      home: parseInt(raw.homeScore) || 0,
-      away: parseInt(raw.awayScore) || 0
-    },
-    odds: formatOdds(raw.odds) || generateMockOdds(),
+    home: raw.homeName || raw.homeFirstName || "Unknown",
+    away: raw.awayName || raw.awayFirstName || "Unknown",
+    league,
+    flag: getLeagueFlag(league),
+    status: getStatus(raw),
+    minute: raw.gameTime !== "-1" ? raw.gameTime : null,
+    score: { home: parseInt(raw.homeScore) || 0, away: parseInt(raw.awayScore) || 0 },
+    odds: formatOdds(raw.odds) || mockOdds(),
     priority: getLeaguePriority(league),
-    isTopLeague: isTopLeague(league),
-    stats: generateMockStats()
+    isTop: isTopLeague(league),
+    stats: mockStats()
   };
 }
 
-function generateMockOdds() {
+function mockOdds() {
   return {
-    home: (1.3 + Math.random() * 2.5).toFixed(2),
-    draw: (2.8 + Math.random() * 1.5).toFixed(2),
-    away: (2.0 + Math.random() * 3).toFixed(2)
+    home: (1.5 + Math.random() * 2).toFixed(2),
+    draw: (3 + Math.random() * 1.5).toFixed(2),
+    away: (2.5 + Math.random() * 2.5).toFixed(2)
   };
 }
 
-function generateMockStats() {
-  const forms = ['W', 'D', 'L'];
+function mockStats() {
+  const f = ['W', 'D', 'L'];
   return {
-    homeForm: Array(5).fill(0).map(() => forms[Math.floor(Math.random() * 3)]).join(''),
-    awayForm: Array(5).fill(0).map(() => forms[Math.floor(Math.random() * 3)]).join(''),
-    h2h: `${Math.floor(Math.random() * 4) + 1} wins in last 5`,
-    avgGoals: (2.0 + Math.random() * 1.5).toFixed(1)
+    homeForm: Array(5).fill(0).map(() => f[Math.floor(Math.random() * 3)]).join(''),
+    awayForm: Array(5).fill(0).map(() => f[Math.floor(Math.random() * 3)]).join(''),
+    h2h: Math.floor(Math.random() * 4) + 1,
+    avgGoals: (2 + Math.random() * 1.5).toFixed(1)
   };
 }
 
-function processMatches(rawMatches) {
-  const valid = rawMatches.filter(m => (m.homeName || m.homeFirstName) && (m.awayName || m.awayFirstName));
-  const transformed = valid.map(transformMatch).filter(m => m.status !== "CANCELLED");
-  transformed.sort((a, b) => a.priority - b.priority);
+function process(raw) {
+  const valid = raw.filter(m => m.homeName && m.awayName);
+  const all = valid.map(transform).filter(m => m.status !== "CANCELLED");
+  all.sort((a, b) => a.priority - b.priority);
   
   return {
-    live: transformed.filter(m => m.status === "LIVE" || m.status === "HT"),
-    finished: transformed.filter(m => m.status === "FT"),
-    upcoming: transformed.filter(m => m.status === "NS")
+    live: all.filter(m => m.status === "LIVE" || m.status === "HT"),
+    finished: all.filter(m => m.status === "FT"),
+    upcoming: all.filter(m => m.status === "NS")
   };
+}
+
+// ============================================
+// BUILD FORMATTED POST (NO AI - DIRECT FORMAT)
+// ============================================
+
+function buildPost(cats) {
+  const date = getTodayFormatted();
+  const total = cats.live.length + cats.finished.length + cats.upcoming.length;
+  
+  let post = "";
+  
+  // HEADER
+  post += `⚽ 𝗙𝗢𝗢𝗧𝗕𝗔𝗟𝗟 𝗗𝗔𝗜𝗟𝗬 | ${date}\n`;
+  post += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  post += `📊 ${total} Matches Today | Top Picks Inside! 🎯\n`;
+  post += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  // LIVE SCORES
+  const topLive = cats.live.filter(m => m.isTop).slice(0, 8);
+  if (topLive.length > 0) {
+    post += `🔴 𝗟𝗜𝗩𝗘 𝗦𝗖𝗢𝗥𝗘𝗦\n`;
+    post += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    const grouped = groupByLeague(topLive);
+    for (const g of grouped) {
+      post += `${g.flag} ${g.name}\n`;
+      for (const m of g.matches) {
+        post += `   ⚽ ${m.home} ${m.score.home}-${m.score.away} ${m.away}`;
+        if (m.minute) post += ` ⏱️ ${m.minute}'`;
+        post += `\n`;
+      }
+      post += `\n`;
+    }
+  }
+  
+  // TODAY'S RESULTS
+  const topFinished = cats.finished.filter(m => m.isTop).slice(0, 10);
+  if (topFinished.length > 0) {
+    post += `✅ 𝗧𝗢𝗗𝗔𝗬'𝗦 𝗥𝗘𝗦𝗨𝗟𝗧𝗦\n`;
+    post += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    const grouped = groupByLeague(topFinished);
+    for (const g of grouped) {
+      post += `${g.flag} ${g.name}\n`;
+      for (const m of g.matches) {
+        const emoji = m.score.home > m.score.away ? "✅" : m.score.home < m.score.away ? "❌" : "🤝";
+        post += `   ⚽ ${m.home} ${m.score.home}-${m.score.away} ${m.away} ${emoji}\n`;
+      }
+      post += `\n`;
+    }
+  }
+  
+  // PREDICTIONS
+  const topUpcoming = cats.upcoming.filter(m => m.isTop).slice(0, 6);
+  if (topUpcoming.length > 0) {
+    post += `🎯 𝗧𝗢𝗣 𝗣𝗥𝗘𝗗𝗜𝗖𝗧𝗜𝗢𝗡𝗦\n`;
+    post += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    for (const m of topUpcoming) {
+      const prediction = generatePrediction(m);
+      
+      post += `┌─────────────────────────────┐\n`;
+      post += `│ ${m.flag} ${m.league.slice(0, 25)}\n`;
+      post += `└─────────────────────────────┘\n\n`;
+      
+      post += `⚽ ${m.home} vs ${m.away}\n\n`;
+      
+      post += `   📊 𝗢𝗱𝗱𝘀: ${m.odds.home} │ ${m.odds.draw} │ ${m.odds.away}\n\n`;
+      
+      post += `   📈 𝗦𝘁𝗮𝘁𝘀:\n`;
+      post += `   ├ ${m.home} form: ${m.stats.homeForm}\n`;
+      post += `   ├ ${m.away} form: ${m.stats.awayForm}\n`;
+      post += `   ├ H2H: ${m.stats.h2h} wins in last 5\n`;
+      post += `   └ Avg goals: ${m.stats.avgGoals}\n\n`;
+      
+      post += `   🔮 𝗣𝗶𝗰𝗸: ${prediction.pick}\n`;
+      post += `   💰 𝗢𝗱𝗱𝘀: @${prediction.odds}\n`;
+      post += `   ⚠️ 𝗥𝗶𝘀𝗸: ${prediction.risk}\n\n`;
+      
+      post += `   💡 ${prediction.analysis}\n\n`;
+      
+      post += `─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─\n\n`;
+    }
+  }
+  
+  // ACCUMULATOR
+  if (topUpcoming.length >= 4) {
+    post += `🔥 𝗔𝗖𝗖𝗨𝗠𝗨𝗟𝗔𝗧𝗢𝗥 𝗢𝗙 𝗧𝗛𝗘 𝗗𝗔𝗬\n`;
+    post += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    const accaMatches = topUpcoming.slice(0, 5);
+    let totalOdds = 1;
+    
+    accaMatches.forEach((m, i) => {
+      const pred = generatePrediction(m);
+      const odds = parseFloat(pred.odds);
+      totalOdds *= odds;
+      post += `   ${i + 1}️⃣ ${m.home} vs ${m.away}\n`;
+      post += `      → ${pred.pick} @${pred.odds}\n\n`;
+    });
+    
+    post += `   💰 £10 → Returns £${(10 * totalOdds).toFixed(2)}\n\n`;
+  }
+  
+  // VALUE BETS
+  post += `📈 𝗩𝗔𝗟𝗨𝗘 𝗕𝗘𝗧𝗦\n`;
+  post += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  if (topUpcoming.length >= 3) {
+    const m1 = topUpcoming[0];
+    const m2 = topUpcoming[1];
+    const m3 = topUpcoming[2];
+    
+    post += `   🟢 𝗦𝗔𝗙𝗘: ${m1.home} to Win @${m1.odds.home}\n\n`;
+    post += `   🟡 𝗩𝗔𝗟𝗨𝗘: ${m2.home} vs ${m2.away} - BTTS @1.75\n\n`;
+    post += `   🔴 𝗟𝗢𝗡𝗚𝗦𝗛𝗢𝗧: ${m3.away} to Win @${m3.odds.away}\n\n`;
+  }
+  
+  // CTA
+  post += `\n`;
+  post += `💰 𝗪𝗔𝗡𝗧 𝗠𝗢𝗥𝗘 𝗪𝗜𝗡𝗡𝗘𝗥𝗦?\n`;
+  post += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  post += `Join 5,000+ members getting FREE tips!\n\n`;
+  post += `   ✅ Pre-match predictions\n`;
+  post += `   ✅ Live in-play alerts\n`;
+  post += `   ✅ Daily accumulators\n`;
+  post += `   ✅ VIP exclusive picks\n\n`;
+  post += `👉 𝗝𝗢𝗜𝗡 𝗙𝗥𝗘𝗘: ${CONFIG.TELEGRAM_URL}\n\n`;
+  post += `⚠️ 18+ | Gamble Responsibly\n\n`;
+  post += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  // HASHTAGS
+  post += `#GlobalScoreNews #Football #BettingTips #FreeTips #Predictions #PremierLeague #LaLiga #Bundesliga #SerieA #Ligue1 #ChampionsLeague #Accumulator #BTTS`;
+  
+  return post;
 }
 
 function groupByLeague(matches) {
   const groups = {};
   for (const m of matches) {
-    const key = m.competition || "Other";
-    if (!groups[key]) groups[key] = { name: m.competition, code: m.code, matches: [] };
+    const key = m.league || "Other";
+    if (!groups[key]) groups[key] = { name: m.league, flag: m.flag, matches: [] };
     groups[key].matches.push(m);
   }
   return Object.values(groups);
 }
 
-// ============================================
-// BUILD DATA FOR AI
-// ============================================
-
-function buildMatchDataString(categories) {
-  let data = `DATE: ${getTodayFormatted()}\n\n`;
+function generatePrediction(match) {
+  const homeOdds = parseFloat(match.odds.home);
+  const awayOdds = parseFloat(match.odds.away);
+  const drawOdds = parseFloat(match.odds.draw);
   
-  const total = categories.live.length + categories.finished.length + categories.upcoming.length;
-  data += `TOTAL: ${total} matches\n`;
-  data += `Live: ${categories.live.length} | Finished: ${categories.finished.length} | Upcoming: ${categories.upcoming.length}\n\n`;
+  // Count wins in form
+  const homeWins = (match.stats.homeForm.match(/W/g) || []).length;
+  const awayWins = (match.stats.awayForm.match(/W/g) || []).length;
   
-  // LIVE - Only top leagues
-  const topLive = categories.live.filter(m => m.isTopLeague);
-  if (topLive.length > 0) {
-    data += "=== LIVE MATCHES ===\n\n";
-    const groups = groupByLeague(topLive);
-    for (const g of groups) {
-      data += `[${g.code}] ${g.name}\n`;
-      for (const m of g.matches) {
-        data += `* ${m.home_team} ${m.score.home}-${m.score.away} ${m.away_team}`;
-        if (m.minute) data += ` (${m.minute}min)`;
-        data += "\n";
-      }
-      data += "\n";
-    }
+  let pick, odds, risk, analysis;
+  
+  if (homeOdds < 1.6 && homeWins >= 3) {
+    pick = `${match.home} Win & Over 1.5 Goals`;
+    odds = (homeOdds * 1.15).toFixed(2);
+    risk = "⭐⭐ Medium";
+    analysis = `${match.home} in great form with ${homeWins} wins in 5. Strong favorites at home.`;
+  } else if (homeOdds < 2.0 && homeWins >= 2) {
+    pick = `${match.home} Win`;
+    odds = match.odds.home;
+    risk = "⭐ Low";
+    analysis = `${match.home} solid at home. ${match.away} struggling on the road.`;
+  } else if (awayOdds < 2.5 && awayWins >= 3) {
+    pick = `${match.away} Win or Draw (Double Chance)`;
+    odds = "1.45";
+    risk = "⭐ Low";
+    analysis = `${match.away} in excellent form away from home. Good value here.`;
+  } else if (parseFloat(match.stats.avgGoals) > 2.5) {
+    pick = "Over 2.5 Goals";
+    odds = "1.85";
+    risk = "⭐⭐ Medium";
+    analysis = `Both teams score freely. Avg ${match.stats.avgGoals} goals in recent games.`;
+  } else {
+    pick = "Both Teams To Score";
+    odds = "1.75";
+    risk = "⭐⭐ Medium";
+    analysis = `Expect goals at both ends. Neither defense is solid.`;
   }
   
-  // FINISHED - Only top leagues
-  const topFinished = categories.finished.filter(m => m.isTopLeague);
-  if (topFinished.length > 0) {
-    data += "=== FINISHED MATCHES ===\n\n";
-    const groups = groupByLeague(topFinished);
-    for (const g of groups) {
-      data += `[${g.code}] ${g.name}\n`;
-      for (const m of g.matches) {
-        const result = m.score.home > m.score.away ? "HOME WIN" : m.score.home < m.score.away ? "AWAY WIN" : "DRAW";
-        data += `* ${m.home_team} ${m.score.home}-${m.score.away} ${m.away_team} - ${result}\n`;
-      }
-      data += "\n";
-    }
-  }
-  
-  // UPCOMING - Only top leagues for predictions
-  const topUpcoming = categories.upcoming.filter(m => m.isTopLeague).slice(0, 10);
-  if (topUpcoming.length > 0) {
-    data += "=== UPCOMING MATCHES (FOR PREDICTIONS) ===\n\n";
-    const groups = groupByLeague(topUpcoming);
-    for (const g of groups) {
-      data += `[${g.code}] ${g.name}\n`;
-      data += "---\n";
-      
-      for (const m of g.matches) {
-        data += `\nMatch: ${m.home_team} vs ${m.away_team}\n`;
-        if (m.kickoff_time) data += `Time: ${m.kickoff_time}\n`;
-        data += `Odds: ${m.odds.home} | ${m.odds.draw} | ${m.odds.away}\n`;
-        data += `Home form: ${m.stats.homeForm}\n`;
-        data += `Away form: ${m.stats.awayForm}\n`;
-        data += `H2H: ${m.stats.h2h}\n`;
-        data += `Avg goals: ${m.stats.avgGoals}\n`;
-      }
-      data += "\n";
-    }
-  }
-  
-  return data;
-}
-
-// ============================================
-// GROQ API
-// ============================================
-
-async function generatePost(matchData) {
-  console.log("\n🤖 Generating post...");
-  
-  const prompt = `${MASTER_INSTRUCTION}
-
-=== TODAY'S DATA ===
-
-${matchData}
-
-=== END DATA ===
-
-Create a clean, professional betting post. Use simple characters only (no special unicode).
-Return valid JSON: {"post_text": "...", "hashtags": [...]}`;
-
-  const models = ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"];
-  
-  let lastError = null;
-  
-  for (const model of models) {
-    try {
-      console.log(`   Trying: ${model}`);
-      
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { 
-              role: "system", 
-              content: "You are a professional betting analyst. Create clean posts using simple ASCII characters only. Return valid JSON." 
-            },
-            { role: "user", content: prompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 4000
-        })
-      });
-      
-      if (res.status === 429) {
-        console.log("   ⚠️ Rate limit, waiting...");
-        await delay(10000);
-        continue;
-      }
-      
-      if (!res.ok) {
-        console.log(`   ❌ API error: ${res.status}`);
-        continue;
-      }
-      
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content || "";
-      
-      if (!text) {
-        console.log("   ⚠️ Empty response");
-        continue;
-      }
-      
-      console.log("   ✅ Got response, parsing...");
-      
-      const parsed = cleanAndParseJSON(text);
-      
-      if (parsed && parsed.post_text) {
-        console.log("   ✅ Parsed successfully!");
-        return parsed;
-      }
-      
-    } catch (e) {
-      console.log(`   ❌ ${e.message}`);
-      lastError = e;
-      continue;
-    }
-  }
-  
-  throw lastError || new Error("All models failed");
+  return { pick, odds, risk, analysis };
 }
 
 // ============================================
@@ -692,27 +502,11 @@ async function postToFacebook(message) {
   
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Facebook error: ${res.status}`);
+    throw new Error(`Facebook: ${res.status}`);
   }
   
   console.log("   ✅ Posted!");
   return res.json();
-}
-
-function buildFinalMessage(response) {
-  let msg = response.post_text || "";
-  
-  // Ensure Telegram link
-  if (!msg.includes("t.me/+9uDCOJXm_R1hMzM0")) {
-    msg = msg.replace(/t\.me\/\+[\w-]+/g, "t.me/+9uDCOJXm_R1hMzM0");
-  }
-  
-  // Add hashtags if not present
-  if (response.hashtags && !msg.includes("#GlobalScoreNews")) {
-    msg += "\n\n" + response.hashtags.join(" ");
-  }
-  
-  return msg.trim();
 }
 
 // ============================================
@@ -720,63 +514,56 @@ function buildFinalMessage(response) {
 // ============================================
 
 async function main() {
-  console.log("=".repeat(50));
-  console.log("GLOBAL SCORE NEWS v7.1 - Fixed JSON Parsing");
-  console.log("=".repeat(50));
+  console.log("═".repeat(50));
+  console.log("⚽ GLOBAL SCORE NEWS v8.0 - Beautiful Format");
+  console.log("═".repeat(50));
   
   assertEnv();
   
   const history = loadHistory();
   
   if (!FORCE_POST && !shouldPostNow(history)) {
-    console.log("\n👋 Skipping this run");
+    console.log("\n👋 Skipping");
     return;
   }
   
-  if (FORCE_POST) console.log("\n⚡ FORCE POST MODE");
+  if (FORCE_POST) console.log("\n⚡ FORCE POST");
   
   const raw = await fetchAllMatches();
-  if (!raw?.length) { 
-    console.log("⚠️ No matches found"); 
-    return; 
+  if (!raw?.length) {
+    console.log("⚠️ No matches");
+    return;
   }
   
-  const cats = processMatches(raw);
-  const total = cats.live.length + cats.finished.length + cats.upcoming.length;
+  const cats = process(raw);
+  const topCount = cats.live.filter(m => m.isTop).length +
+                   cats.finished.filter(m => m.isTop).length +
+                   cats.upcoming.filter(m => m.isTop).length;
   
-  console.log(`\n📊 Processed: ${total} matches`);
-  console.log(`   Live: ${cats.live.length} | FT: ${cats.finished.length} | Upcoming: ${cats.upcoming.length}`);
+  console.log(`\n📊 Top leagues: ${topCount}`);
   
-  const topTotal = cats.live.filter(m => m.isTopLeague).length +
-                   cats.finished.filter(m => m.isTopLeague).length +
-                   cats.upcoming.filter(m => m.isTopLeague).length;
-  
-  console.log(`   Top leagues: ${topTotal}`);
-  
-  if (topTotal < 3) { 
-    console.log("⚠️ Not enough top league matches"); 
-    return; 
+  if (topCount < 3) {
+    console.log("⚠️ Not enough matches");
+    return;
   }
   
-  const matchData = buildMatchDataString(cats);
-  const response = await generatePost(matchData);
-  const final = buildFinalMessage(response);
+  // Build post directly (no AI)
+  const post = buildPost(cats);
   
-  console.log("\n" + "=".repeat(50));
-  console.log("POST PREVIEW:");
-  console.log("=".repeat(50));
-  console.log(final);
-  console.log("=".repeat(50));
-  console.log(`Length: ${final.length} characters`);
+  console.log("\n" + "═".repeat(50));
+  console.log("📝 POST PREVIEW:");
+  console.log("═".repeat(50));
+  console.log(post);
+  console.log("═".repeat(50));
+  console.log(`📏 ${post.length} chars`);
   
-  const result = await postToFacebook(final);
-  recordPost(history, total);
+  const result = await postToFacebook(post);
+  recordPost(history, topCount);
   
-  console.log(`\n✅ SUCCESS! Post ID: ${result.id}`);
-  console.log(`   Today's posts: ${getTodayCount(history)}`);
+  console.log(`\n✅ SUCCESS! ID: ${result.id}`);
 }
 
 main().catch(e => {
-  console.error("\n❌ ERROR:", e.message);
+  console.error("❌", e.message);
   process.exit(1);
 });
