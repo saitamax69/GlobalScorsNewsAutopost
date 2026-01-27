@@ -3,11 +3,12 @@
 // ============================================
 const SPORTDB_API_KEY = process.env.SPORTDB_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY; // Optional: Add this for backup
 const FB_PAGE_ID = process.env.FB_PAGE_ID;
 const FB_PAGE_ACCESS_TOKEN = process.env.FB_PAGE_ACCESS_TOKEN;
 
 // ============================================
-// MASTER INSTRUCTION FOR GEMINI
+// MASTER INSTRUCTION
 // ============================================
 const MASTER_INSTRUCTION = `You are a senior social media editor for the Facebook page "Global Score News." You write concise, clean, professional posts about football (soccer): live updates, results, analysis, previews, and predictions. You must ONLY use facts present in the provided match_data. Do not invent details.
 
@@ -39,18 +40,18 @@ Output format (JSON only):
 // ============================================
 
 function assertEnv() {
-  const required = [
-    "SPORTDB_API_KEY",
-    "GEMINI_API_KEY",
-    "FB_PAGE_ID",
-    "FB_PAGE_ACCESS_TOKEN"
-  ];
+  const required = ["SPORTDB_API_KEY", "FB_PAGE_ID", "FB_PAGE_ACCESS_TOKEN"];
   
   for (const key of required) {
     if (!process.env[key]) {
       throw new Error(`Missing required environment variable: ${key}`);
     }
   }
+  
+  if (!GEMINI_API_KEY && !OPENAI_API_KEY) {
+    throw new Error("Need either GEMINI_API_KEY or OPENAI_API_KEY");
+  }
+  
   console.log("✅ All environment variables present");
 }
 
@@ -74,8 +75,7 @@ async function fetchLiveMatches() {
   }
   
   const data = await res.json();
-  const matches = Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
-  return matches;
+  return Array.isArray(data) ? data : (data.matches || data.events || data.data || []);
 }
 
 async function fetchTodayMatches() {
@@ -112,14 +112,11 @@ async function fetchAllMatches() {
 // ============================================
 
 function getMatchStatus(m) {
-  const stage = (m.eventStage || m.status || m.state || "").toString().toUpperCase();
-  return stage;
+  return (m.eventStage || m.status || m.state || "").toString().toUpperCase();
 }
 
 function pickBestMatch(matches) {
-  if (!matches || matches.length === 0) {
-    return null;
-  }
+  if (!matches || matches.length === 0) return null;
   
   const hasValidTeams = (m) => {
     const home = m.homeName || m.homeFirstName || "";
@@ -130,54 +127,23 @@ function pickBestMatch(matches) {
   const validMatches = matches.filter(hasValidTeams);
   console.log(`Found ${validMatches.length} matches with valid team names`);
   
-  if (validMatches.length === 0) {
-    return matches[0];
-  }
+  if (validMatches.length === 0) return matches[0];
   
-  // Priority 1: LIVE matches
+  // Priority: LIVE > HT > FT > Big League
   const live = validMatches.find(m => {
     const s = getMatchStatus(m);
-    return s === "LIVE" || s === "1ST HALF" || s === "2ND HALF" || 
-           s === "1H" || s === "2H" || s.includes("HALF");
+    return s.includes("HALF") || s === "LIVE" || s === "1H" || s === "2H";
   });
-  if (live) {
-    console.log("🔴 Selected LIVE match");
-    return live;
-  }
+  if (live) { console.log("🔴 Selected LIVE match"); return live; }
   
-  // Priority 2: HALF TIME
-  const ht = validMatches.find(m => {
-    const s = getMatchStatus(m);
-    return s === "HALFTIME" || s === "HT" || s === "HALF TIME";
-  });
-  if (ht) {
-    console.log("⏸️ Selected HT match");
-    return ht;
-  }
+  const ht = validMatches.find(m => getMatchStatus(m).includes("HT") || getMatchStatus(m).includes("HALFTIME"));
+  if (ht) { console.log("⏸️ Selected HT match"); return ht; }
   
-  // Priority 3: FINISHED matches
   const ft = validMatches.find(m => {
     const s = getMatchStatus(m);
-    return s === "FINISHED" || s === "FT" || s === "ENDED" || s === "AET";
+    return s === "FINISHED" || s === "FT" || s === "ENDED";
   });
-  if (ft) {
-    console.log("✅ Selected FT match");
-    return ft;
-  }
-  
-  // Priority 4: Big league matches
-  const bigLeagues = ["PREMIER LEAGUE", "LA LIGA", "BUNDESLIGA", "SERIE A", "LIGUE 1", 
-                      "CHAMPIONS LEAGUE", "EUROPA LEAGUE"];
-  
-  const bigLeagueMatch = validMatches.find(m => {
-    const league = (m.leagueName || m.tournamentName || "").toUpperCase();
-    return bigLeagues.some(bl => league.includes(bl));
-  });
-  
-  if (bigLeagueMatch) {
-    console.log("🏆 Selected big league match");
-    return bigLeagueMatch;
-  }
+  if (ft) { console.log("✅ Selected FT match"); return ft; }
   
   console.log("📌 Selected first valid match");
   return validMatches[0];
@@ -186,16 +152,15 @@ function pickBestMatch(matches) {
 function transformToMatchData(raw) {
   const normalizeStatus = (stage) => {
     const s = (stage || "").toString().toUpperCase();
-    if (s === "1ST HALF" || s === "2ND HALF" || s === "1H" || s === "2H" || 
-        s === "LIVE" || s.includes("HALF")) return "LIVE";
+    if (s.includes("HALF") || s === "LIVE" || s === "1H" || s === "2H") return "LIVE";
     if (s === "FINISHED" || s === "ENDED" || s === "FT" || s === "AET") return "FT";
-    if (s === "HALFTIME" || s === "HT" || s === "HALF TIME") return "HT";
+    if (s.includes("HT") || s === "HALFTIME") return "HT";
     return "NS";
   };
   
   return {
-    competition: raw.leagueName || raw.tournamentName || raw.competition || "",
-    round: raw.round || raw.matchday || "",
+    competition: raw.leagueName || raw.tournamentName || "",
+    round: raw.round || "",
     home_team: raw.homeName || raw.homeFirstName || "Unknown",
     away_team: raw.awayName || raw.awayFirstName || "Unknown",
     status: normalizeStatus(raw.eventStage || raw.status),
@@ -207,11 +172,11 @@ function transformToMatchData(raw) {
     scorers: raw.scorers || [],
     events: raw.events || [],
     stats: raw.stats || {},
-    form: raw.form || {},
-    h2h: raw.h2h || {},
-    odds_like: raw.odds || {},
+    form: {},
+    h2h: {},
+    odds_like: {},
     venue: raw.venue || "",
-    kickoff_iso: raw.startTime || raw.datetime || "",
+    kickoff_iso: raw.startTime || "",
     notes: ""
   };
 }
@@ -226,12 +191,10 @@ function determineContentType(status) {
 }
 
 // ============================================
-// GEMINI API - FIXED MODEL NAMES
+// GEMINI API (with longer delays)
 // ============================================
 
-async function generatePostWithGemini(contentType, matchData) {
-  console.log("🤖 Generating post with Gemini...");
-  
+async function generateWithGemini(contentType, matchData) {
   const input = {
     page_name: "Global Score News",
     telegram_cta_url: "https://t.me/+xAQ3DCVJa8A2ZmY8",
@@ -240,101 +203,124 @@ async function generatePostWithGemini(contentType, matchData) {
     match_data: matchData
   };
 
-  // Correct model configurations
-  const modelConfigs = [
-    { 
-      model: "gemini-2.0-flash", 
-      apiVersion: "v1beta" 
-    },
-    { 
-      model: "gemini-1.5-flash", 
-      apiVersion: "v1beta" 
-    },
-    { 
-      model: "gemini-1.5-pro", 
-      apiVersion: "v1beta" 
+  const prompt = `${MASTER_INSTRUCTION}\n\nGenerate a ${contentType} post for this match:\n\n${JSON.stringify(input, null, 2)}`;
+
+  const maxRetries = 5;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    console.log(`   Gemini attempt ${attempt}/${maxRetries}`);
+    
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
+      })
+    });
+    
+    if (res.status === 429) {
+      const waitTime = attempt * 20; // 20s, 40s, 60s, 80s, 100s
+      console.log(`   ⚠️ Rate limited. Waiting ${waitTime} seconds...`);
+      await delay(waitTime * 1000);
+      continue;
     }
-  ];
+    
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Gemini error ${res.status}: ${errText}`);
+    }
+    
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    
+    let cleaned = text.trim();
+    if (cleaned.startsWith("```json")) cleaned = cleaned.slice(7);
+    else if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
+    if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
+    
+    return JSON.parse(cleaned.trim());
+  }
   
-  const maxRetries = 3;
-  let lastError = null;
+  throw new Error("Gemini rate limit exceeded after all retries");
+}
+
+// ============================================
+// OPENAI API (Backup)
+// ============================================
+
+async function generateWithOpenAI(contentType, matchData) {
+  const input = {
+    page_name: "Global Score News",
+    telegram_cta_url: "https://t.me/+xAQ3DCVJa8A2ZmY8",
+    content_type: contentType,
+    language: "en",
+    match_data: matchData
+  };
+
+  const prompt = `${MASTER_INSTRUCTION}\n\nGenerate a ${contentType} post for this match:\n\n${JSON.stringify(input, null, 2)}`;
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 1024
+    })
+  });
   
-  for (const config of modelConfigs) {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`   Trying ${config.model} (${config.apiVersion}) - attempt ${attempt}/${maxRetries}`);
-        
-        const url = `https://generativelanguage.googleapis.com/${config.apiVersion}/models/${config.model}:generateContent?key=${GEMINI_API_KEY}`;
-        
-        const requestBody = {
-          contents: [
-            {
-              parts: [
-                { 
-                  text: `${MASTER_INSTRUCTION}\n\nGenerate a ${contentType} post for this match:\n\n${JSON.stringify(input, null, 2)}` 
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1024
-          }
-        };
-        
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody)
-        });
-        
-        // Handle rate limiting
-        if (res.status === 429) {
-          console.log(`   ⚠️ Rate limited. Waiting 15 seconds...`);
-          await delay(15000);
-          continue;
-        }
-        
-        // Handle other errors
-        if (!res.ok) {
-          const errText = await res.text();
-          console.log(`   ❌ ${config.model} failed: ${res.status}`);
-          lastError = new Error(`Gemini API error ${res.status}: ${errText}`);
-          break; // Try next model
-        }
-        
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        
-        if (!text) {
-          console.log(`   ⚠️ Empty response, retrying...`);
-          await delay(3000);
-          continue;
-        }
-        
-        // Clean up JSON response
-        let cleaned = text.trim();
-        if (cleaned.startsWith("```json")) cleaned = cleaned.slice(7);
-        else if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
-        if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
-        cleaned = cleaned.trim();
-        
-        const parsed = JSON.parse(cleaned);
-        console.log(`   ✅ Success with ${config.model}!`);
-        return parsed;
-        
-      } catch (error) {
-        console.log(`   ⚠️ Error: ${error.message}`);
-        lastError = error;
-        if (attempt < maxRetries) {
-          console.log(`   Waiting 5 seconds before retry...`);
-          await delay(5000);
-        }
-      }
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`OpenAI error ${res.status}: ${errText}`);
+  }
+  
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content || "";
+  
+  let cleaned = text.trim();
+  if (cleaned.startsWith("```json")) cleaned = cleaned.slice(7);
+  else if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
+  if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
+  
+  return JSON.parse(cleaned.trim());
+}
+
+// ============================================
+// MAIN GENERATE FUNCTION
+// ============================================
+
+async function generatePost(contentType, matchData) {
+  console.log("🤖 Generating post...");
+  
+  // Try OpenAI first if available (more reliable)
+  if (OPENAI_API_KEY) {
+    try {
+      console.log("   Using OpenAI...");
+      return await generateWithOpenAI(contentType, matchData);
+    } catch (error) {
+      console.log(`   OpenAI failed: ${error.message}`);
     }
   }
   
-  throw lastError || new Error("All Gemini models failed");
+  // Try Gemini
+  if (GEMINI_API_KEY) {
+    try {
+      console.log("   Using Gemini...");
+      return await generateWithGemini(contentType, matchData);
+    } catch (error) {
+      console.log(`   Gemini failed: ${error.message}`);
+      throw error;
+    }
+  }
+  
+  throw new Error("No AI API available");
 }
 
 // ============================================
@@ -344,39 +330,32 @@ async function generatePostWithGemini(contentType, matchData) {
 async function postToFacebook(message) {
   console.log("📘 Posting to Facebook...");
   
-  const url = `https://graph.facebook.com/v19.0/${FB_PAGE_ID}/feed`;
-  
-  const params = new URLSearchParams({
-    message: message,
-    access_token: FB_PAGE_ACCESS_TOKEN
-  });
-  
-  const res = await fetch(url, {
+  const res = await fetch(`https://graph.facebook.com/v19.0/${FB_PAGE_ID}/feed`, {
     method: "POST",
-    body: params
+    body: new URLSearchParams({
+      message: message,
+      access_token: FB_PAGE_ACCESS_TOKEN
+    })
   });
   
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`Facebook API error ${res.status}: ${errText}`);
+    throw new Error(`Facebook error ${res.status}: ${errText}`);
   }
   
   return res.json();
 }
 
-function buildFacebookMessage(geminiResponse) {
-  const postText = geminiResponse.post_text || "";
-  const hashtags = geminiResponse.hashtags || [];
+function buildFacebookMessage(response) {
+  const postText = response.post_text || "";
+  const hashtags = response.hashtags || [];
   
-  if (postText.includes("#GlobalScoreNews")) {
-    return postText;
-  }
-  
+  if (postText.includes("#GlobalScoreNews")) return postText;
   return `${postText}\n\n${hashtags.join(" ")}`.trim();
 }
 
 // ============================================
-// MAIN FUNCTION
+// MAIN
 // ============================================
 
 async function main() {
@@ -385,44 +364,31 @@ async function main() {
   assertEnv();
   
   const matches = await fetchAllMatches();
-  
-  if (!matches || matches.length === 0) {
-    console.log("⚠️ No matches found. Exiting.");
-    return;
-  }
+  if (!matches?.length) { console.log("⚠️ No matches found."); return; }
   
   const rawMatch = pickBestMatch(matches);
-  
-  if (!rawMatch) {
-    console.log("⚠️ No suitable match found. Exiting.");
-    return;
-  }
+  if (!rawMatch) { console.log("⚠️ No suitable match."); return; }
   
   const matchData = transformToMatchData(rawMatch);
   console.log(`\n📋 Match: ${matchData.home_team} vs ${matchData.away_team}`);
-  console.log(`   Status: ${matchData.status}`);
-  console.log(`   Score: ${matchData.score.home} - ${matchData.score.away}`);
+  console.log(`   Status: ${matchData.status} | Score: ${matchData.score.home}-${matchData.score.away}`);
   console.log(`   Competition: ${matchData.competition}\n`);
   
-  if (matchData.home_team === "Unknown" || matchData.away_team === "Unknown") {
-    console.log("⚠️ Could not parse match data properly.");
-    return;
-  }
+  if (matchData.home_team === "Unknown") { console.log("⚠️ Invalid match data."); return; }
   
   const contentType = determineContentType(matchData.status);
   console.log(`📝 Content type: ${contentType}\n`);
   
-  const geminiResponse = await generatePostWithGemini(contentType, matchData);
-  console.log("✅ Post generated successfully\n");
+  const response = await generatePost(contentType, matchData);
+  console.log("✅ Post generated!\n");
   
-  const message = buildFacebookMessage(geminiResponse);
+  const message = buildFacebookMessage(response);
   console.log("--- POST PREVIEW ---");
   console.log(message);
   console.log("--- END PREVIEW ---\n");
   
   const fbResult = await postToFacebook(message);
-  console.log("✅ Posted to Facebook successfully!");
-  console.log(`   Post ID: ${fbResult.id}`);
+  console.log(`✅ Posted! ID: ${fbResult.id}`);
 }
 
 main().catch((error) => {
